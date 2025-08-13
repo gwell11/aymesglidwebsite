@@ -7,8 +7,8 @@ export default function HomeInner() {
     <main
       className="flex flex-col items-center justify-center min-h-screen"
       style={{
-        backgroundImage: 'url(/IMG_2031.jpg)',
-        backgroundSize: 'cover',
+    backgroundImage: 'url(/drawingcouple.png)',
+    backgroundSize: '60vmin 60vmin',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
       }}

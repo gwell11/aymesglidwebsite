@@ -10,20 +10,14 @@ export default function Home() {
     <div
       className="flex flex-col items-center justify-center min-h-screen"
       style={{
-        backgroundImage: 'url(/IMG_2031.jpg)',
-        backgroundSize: 'cover',
+    backgroundImage: 'url(/drawing.png)',
+    backgroundSize: '60vmin 60vmin', // square size
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
       }}
     >
   <Mascot />
-      <Image
-        src="/briefcase.svg"
-        alt="Briefcase"
-        width={128}
-        height={128}
-        priority
-      />
+  {/* Briefcase image removed */}
       <button
         className="mt-6 text-2xl font-bold tracking-wide text-gray-800 dark:text-gray-100 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 px-6 py-2 rounded transition"
         onClick={() => router.push("/home")}

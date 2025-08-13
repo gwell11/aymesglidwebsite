@@ -2,7 +2,15 @@ import React from "react";
 
 export default function AboutPage() {
   return (
-    <main className="max-w-2xl mx-auto py-16 px-4">
+    <main
+      className="max-w-2xl mx-auto py-16 px-4"
+      style={{
+        backgroundImage: 'url(/drawing.png)',
+        backgroundSize: '60vmin 60vmin',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
       <h1 className="text-4xl font-bold mb-4">About Me</h1>
       <p className="text-lg text-gray-700 mb-2">
         Hello! I’m [Your Name], a passionate developer seeking new opportunities.
