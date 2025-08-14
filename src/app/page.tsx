@@ -30,7 +30,7 @@ export default function Home() {
           zIndex: 10,
           cursor: 'pointer',
         }}
-        onClick={() => router.push("/home")}
+  onClick={() => router.push("/")}
       >
         Home
       </button>

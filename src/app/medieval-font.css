@@ -1,0 +1,9 @@
+/* Old English Text MT is a classic old-style font, but not all systems have it. We'll use it if available, then fallback to serif. */
+@font-face {
+  font-family: 'UnifrakturCook';
+  src: url('https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&display=swap');
+}
+
+body, button, input, textarea, select {
+  font-family: 'UnifrakturCook', 'Old English Text MT', 'Goudy Old Style', 'Garamond', serif !important;
+}
