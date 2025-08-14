@@ -42,7 +42,7 @@ export default function Home() {
           style={{ fontFamily: 'Papyrus, fantasy' }}
           onClick={() => router.push("/home")}
         >
-          Aymes Glidewell
+          Enter
         </button>
       </div>
     </div>
