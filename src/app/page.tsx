@@ -42,7 +42,7 @@ export default function Home() {
           style={{ fontFamily: 'Papyrus, fantasy' }}
           onClick={() => router.push("/home")}
         >
-          Enter
+          Hello
         </button>
       </div>
     </div>
