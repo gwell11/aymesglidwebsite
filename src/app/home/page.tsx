@@ -7,15 +7,7 @@ import { useRouter } from "next/navigation";
 export default function HomeInner() {
   const router = useRouter();
   return (
-    <main
-      className="flex flex-col items-center justify-center min-h-screen"
-      style={{
-        backgroundImage: 'url(/drawingcouple.png)',
-        backgroundSize: '60vmin 60vmin',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
+    <main className="flex flex-col items-center justify-center min-h-screen">
       {/* Home button in top-left corner */}
       <button
         style={{
@@ -36,9 +28,9 @@ export default function HomeInner() {
       </button>
       <h1 className="text-4xl font-bold mb-6 text-gray-900 dark:text-gray-100">Aymes Glidewell</h1>
       <nav className="flex flex-wrap gap-6 text-lg font-medium relative">
-        <Link href="/about" className="hover:underline">About</Link>
-  <Link href="/projects" className="hover:underline">Projects</Link>
-  <Link href="/projects/synths" className="hover:underline">Synths</Link>
+        <Link href="/about" className="hover:text-green-600 hover:underline">About</Link>
+  <Link href="/projects" className="hover:text-green-600 hover:underline">Projects</Link>
+  <Link href="/projects/synths" className="hover:text-green-600 hover:underline">Synths</Link>
       </nav>
     </main>
   );

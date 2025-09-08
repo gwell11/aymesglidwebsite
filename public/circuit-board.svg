@@ -1,0 +1,31 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Simple, visible circuit traces -->
+  <rect width="200" height="200" fill="#f8fafc"/>
+  
+  <!-- Main horizontal traces -->
+  <line x1="0" y1="50" x2="200" y2="50" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="0" y1="100" x2="200" y2="100" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="0" y1="150" x2="200" y2="150" stroke="#94a3b8" stroke-width="2"/>
+  
+  <!-- Main vertical traces -->
+  <line x1="50" y1="0" x2="50" y2="200" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="100" y1="0" x2="100" y2="200" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="150" y1="0" x2="150" y2="200" stroke="#94a3b8" stroke-width="2"/>
+  
+  <!-- Connection points -->
+  <circle cx="50" cy="50" r="3" fill="#64748b"/>
+  <circle cx="100" cy="50" r="3" fill="#64748b"/>
+  <circle cx="150" cy="50" r="3" fill="#64748b"/>
+  <circle cx="50" cy="100" r="3" fill="#64748b"/>
+  <circle cx="100" cy="100" r="3" fill="#64748b"/>
+  <circle cx="150" cy="100" r="3" fill="#64748b"/>
+  <circle cx="50" cy="150" r="3" fill="#64748b"/>
+  <circle cx="100" cy="150" r="3" fill="#64748b"/>
+  <circle cx="150" cy="150" r="3" fill="#64748b"/>
+  
+  <!-- Corner connections -->
+  <path d="M 25 25 L 75 25 L 75 75 L 25 75 Z" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+  <path d="M 125 25 L 175 25 L 175 75 L 125 75 Z" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+  <path d="M 25 125 L 75 125 L 75 175 L 25 175 Z" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+  <path d="M 125 125 L 175 125 L 175 175 L 125 175 Z" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+</svg>

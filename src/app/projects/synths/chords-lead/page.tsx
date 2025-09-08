@@ -1,6 +1,29 @@
 "use client";
-import { useState } from 'react';
-import { FaChevronLeft, FaHome, FaRegDotCircle, FaSyncAlt, FaSlidersH } from 'react-icons/fa';
+import { useState, useRef, useCallback } from 'react';
+import { FaRegDotCircle, FaSyncAlt, FaSlidersH } from 'react-icons/fa';
+import PCBTraces from '../../../../components/PCBTraces';
+
+// Note frequencies in Hz
+const noteFrequencies: { [key: string]: number } = {
+  'C': 261.63,
+  'D': 293.66,
+  'E': 329.63,
+  'F': 349.23,
+  'G': 392.00,
+  'A': 440.00,
+  'B': 493.88,
+};
+
+// Chord intervals (semitones from root)
+const chordIntervals: { [key: string]: number[] } = {
+  'Maj': [0, 4, 7],
+  'min': [0, 3, 7],
+  '7': [0, 4, 7, 10],
+  'Maj7': [0, 4, 7, 11],
+  'min7': [0, 3, 7, 10],
+  'dim': [0, 3, 6],
+  'aug': [0, 4, 8],
+};
 
 const chordTypes = ['Maj', 'min', '7', 'Maj7', 'min7', 'dim', 'aug'];
 const defaultChords = [
@@ -28,158 +51,254 @@ export default function ChordsSynth2D() {
   const [encoderFocus, setEncoderFocus] = useState<'key' | 'scale' | 'sound'>('key');
   const [soundParamIdx, setSoundParamIdx] = useState(0);
   const [params, setParams] = useState(soundParams.map(p => p.default));
+  
+  // Audio context and active oscillators
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const activeOscillatorsRef = useRef<OscillatorNode[]>([]);
+
+  // Initialize audio context
+  const initAudioContext = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  // Stop all currently playing sounds
+  const stopAllSounds = useCallback(() => {
+    const audioContext = audioContextRef.current;
+    if (!audioContext) return;
+
+    activeOscillatorsRef.current.forEach(oscillator => {
+      try {
+        oscillator.stop();
+        oscillator.disconnect();
+      } catch (e) {
+        // Oscillator already stopped
+      }
+    });
+    activeOscillatorsRef.current = [];
+  }, []);
+
+  // Play chord function
+  const playChord = useCallback((chordIndex: number) => {
+    const audioContext = initAudioContext();
+    if (!audioContext) return;
+
+    // Stop all currently playing sounds first
+    stopAllSounds();
+
+    const chord = chords[chordIndex];
+    const rootFreq = noteFrequencies[chord.note];
+    const intervals = chordIntervals[chord.type];
+    
+    const oscillators: OscillatorNode[] = [];
+    
+    intervals.forEach((interval, i) => {
+      const frequency = rootFreq * Math.pow(2, interval / 12);
+      
+      // Create oscillator
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      // Connect audio nodes
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Set oscillator properties
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      
+      // Set ADSR envelope
+      const now = audioContext.currentTime;
+      const attack = params[0]; // Attack
+      const decay = params[1];  // Decay
+      const sustain = params[2]; // Sustain
+      const release = params[3]; // Release
+      
+      // Initial volume based on note position in chord
+      const volume = (0.15 / intervals.length) * (1 - i * 0.1);
+      
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(volume, now + attack);
+      gainNode.gain.linearRampToValueAtTime(volume * sustain, now + attack + decay);
+      
+      oscillator.start(now);
+      oscillators.push(oscillator);
+      
+      // Auto-stop after 2 seconds
+      setTimeout(() => {
+        if (gainNode.gain) {
+          gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + release);
+          setTimeout(() => {
+            try {
+              oscillator.stop();
+              oscillator.disconnect();
+              // Remove from active oscillators array
+              const index = activeOscillatorsRef.current.indexOf(oscillator);
+              if (index > -1) {
+                activeOscillatorsRef.current.splice(index, 1);
+              }
+            } catch (e) {
+              // Oscillator already stopped
+            }
+          }, release * 1000);
+        }
+      }, 2000);
+    });
+    
+    // Store active oscillators
+    activeOscillatorsRef.current = oscillators;
+  }, [chords, params, initAudioContext, stopAllSounds]);
 
   const handleChordTypeChange = (idx: number, type: string) => {
     setChords(chords.map((c, i) => i === idx ? { ...c, type } : c));
   };
-  const handleParamChange = (idx: number, value: number) => {
-    setParams(params.map((p, i) => i === idx ? value : p));
+
+  const handleKeyPress = (idx: number) => {
+    setSelectedKey(idx);
+    playChord(idx);
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-8 bg-gradient-to-br from-gray-200 via-gray-400 to-gray-300 text-gray-900 relative overflow-hidden">
-      <div className="flex flex-col items-center">
-        {/* OP-1 Inspired Synth Body */}
-  <div className="relative bg-gradient-to-br from-gray-100 via-gray-300 to-gray-200 rounded-2xl shadow-2xl border-4 border-gray-400 p-2 pt-2 pb-4 flex flex-col items-center" style={{width: 260, minHeight: 60, maxWidth: 320}}>
-          {/* Bezel highlight */}
-          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{boxShadow: '0 0 32px 8px #0002, 0 2px 8px #fff3 inset'}} />
+    <main className="flex flex-col items-center justify-center min-h-screen p-8 relative">
+      <PCBTraces />
+      {/* Main Synth Body - WIDE */}
+      <div className="relative bg-gradient-to-b from-gray-100 to-gray-300 rounded-lg shadow-2xl border-2 border-gray-500 p-6 flex flex-col items-center relative z-10" style={{ width: 580, height: 450 }}>
+        <div className="absolute inset-0 rounded-lg pointer-events-none" style={{boxShadow: '0 0 30px rgba(0,0,0,0.3), 0 4px 12px rgba(255,255,255,0.6) inset'}} />
 
-          {/* Top Row: Back, Home, Rotary Encoder (moved to right), and centered Screen fully on synth body */}
-          <div className="flex items-center justify-between w-full mb-1 px-1">
-            {/* Back & Home */}
-            <div className="flex flex-col gap-2 mr-2">
-              <button className="w-7 h-7 bg-gray-300 hover:bg-gray-200 rounded-full flex items-center justify-center shadow border border-gray-400 active:scale-95 transition-transform" title="Back">
-                <FaChevronLeft size={14} />
-              </button>
-              <button className="w-7 h-7 bg-gray-300 hover:bg-gray-200 rounded-full flex items-center justify-center shadow border border-gray-400 active:scale-95 transition-transform" title="Home">
-                <FaHome size={14} />
-              </button>
-            </div>
-            {/* Sound Design button */}
-            <button className="w-8 h-8 bg-indigo-600 hover:bg-indigo-500 rounded-full flex items-center justify-center shadow border-2 border-indigo-800 active:scale-95 transition-transform mx-2" title="Sound Design" onClick={() => { setScreen(screen === 'sound-design' ? 'main' : 'sound-design'); setEncoderFocus('sound'); }}>
-              <FaSlidersH size={18} className="text-white" />
-            </button>
-            {/* Rotary Encoder: left/right/click, context-sensitive */}
-            <div className="ml-2 flex flex-col items-center">
-              <button className="w-8 h-8 bg-gray-400 hover:bg-gray-300 rounded-full flex items-center justify-center shadow-2xl border-2 border-gray-500 active:scale-95 transition-transform mb-1" title="Encoder Left" onClick={() => {
-                if (encoderFocus === 'key') setSelectedKey((selectedKey + 6) % 7);
-                else if (encoderFocus === 'scale') setScale(prev => {
-                  const keys = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-                  let idx = keys.indexOf(prev);
-                  return keys[(idx + 11) % 12];
-                });
-                else if (encoderFocus === 'sound') setSoundParamIdx(i => (i + soundParams.length - 1) % soundParams.length);
-              }}>
-                <span className="text-lg font-bold">&#8592;</span>
-              </button>
-              <button className="w-8 h-8 bg-gray-400 hover:bg-gray-300 rounded-full flex items-center justify-center shadow-2xl border-2 border-gray-500 active:scale-95 transition-transform mb-1" title="Encoder Click" onClick={() => {
-                if (screen === 'main') {
-                  if (encoderFocus === 'key') setScreen('chord-select');
-                  else if (encoderFocus === 'scale') setEncoderFocus('key');
-                } else if (screen === 'chord-select') {
-                  setScreen('main');
-                } else if (screen === 'sound-design') {
-                  setEncoderFocus(f => f === 'sound' ? 'key' : 'sound');
-                }
-              }}>
-                <FaRegDotCircle size={18} className="text-indigo-700 animate-pulse" />
-              </button>
-              <button className="w-8 h-8 bg-gray-400 hover:bg-gray-300 rounded-full flex items-center justify-center shadow-2xl border-2 border-gray-500 active:scale-95 transition-transform" title="Encoder Right" onClick={() => {
-                if (encoderFocus === 'key') setSelectedKey((selectedKey + 1) % 7);
-                else if (encoderFocus === 'scale') setScale(prev => {
-                  const keys = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-                  let idx = keys.indexOf(prev);
-                  return keys[(idx + 1) % 12];
-                });
-                else if (encoderFocus === 'sound') setSoundParamIdx(i => (i + 1) % soundParams.length);
-              }}>
-                <span className="text-lg font-bold">&#8594;</span>
-              </button>
-            </div>
-          </div>
-          {/* Centered Screen fully on synth body, all interactive/status text inside */}
-          <div className="flex justify-center w-full mb-1">
-            <div className="w-48 h-16 bg-black/90 rounded-md flex flex-col items-center justify-center border-4 border-gray-300 shadow-inner relative mx-2">
-              <div className="text-[0.7rem] text-gray-300 absolute top-1 left-2">Chord Synth</div>
-              {screen === 'main' && (
-                <div className="flex flex-col items-center w-full">
-                  {/* Key layout on screen */}
-                  <div className="flex justify-center gap-1 mb-1 w-full">
-                    {chords.map((chord, idx) => (
-                      <div key={idx} className={`flex flex-col items-center w-6 ${selectedKey === idx ? 'bg-yellow-300 rounded-md' : ''}`} style={{padding: '1px'}}>
-                        <span className={`text-xs font-bold ${selectedKey === idx ? 'text-black' : 'text-white'}`}>{chord.note}</span>
-                        <span className={`text-[0.6rem] ${selectedKey === idx ? 'text-black' : 'text-pink-200'}`}>{chord.type}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-white">Key/Scale:</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${encoderFocus === 'scale' ? 'bg-yellow-300 text-black' : 'text-yellow-300'}`}>{scale}</span>
-                    <button className="ml-1 px-1 py-0.5 rounded bg-indigo-700 hover:bg-indigo-600 text-xs text-white" onClick={() => setChords(defaultChords)} title="Reset Chords">
-                      <FaSyncAlt />
-                    </button>
-                  </div>
-                  <div className="text-[0.7rem] text-pink-200 mt-1">{soundParams.map((param, idx) => `${param.name}: ${params[idx]}`).join(' | ')}</div>
-                  <div className="flex gap-2 mt-1">
-                    <button className={`text-xs px-2 py-0.5 rounded ${encoderFocus === 'key' ? 'bg-yellow-300 text-black' : 'bg-gray-700 text-white'}`} onClick={() => setEncoderFocus('key')}>Key</button>
-                    <button className={`text-xs px-2 py-0.5 rounded ${encoderFocus === 'scale' ? 'bg-yellow-300 text-black' : 'bg-gray-700 text-white'}`} onClick={() => setEncoderFocus('scale')}>Scale</button>
-                  </div>
-                </div>
-              )}
-              {screen === 'chord-select' && (
-                <div className="flex flex-col items-center w-full">
-                  <div className="text-xs text-white mb-1">Select Chord for <span className="text-yellow-300">{chords[selectedKey].note}</span></div>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {chordTypes.map(type => (
-                      <button key={type} className={`px-2 py-1 rounded text-xs font-bold ${chords[selectedKey].type === type ? 'bg-yellow-300 text-black' : 'bg-gray-700 text-white hover:bg-yellow-200 hover:text-black'}`} onClick={() => { handleChordTypeChange(selectedKey, type); setScreen('main'); }}>{type}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {screen === 'sound-design' && (
-                <div className="flex flex-col items-center w-full">
-                  <div className="text-xs text-white mb-1">Sound Design</div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs text-pink-200 mb-1">{soundParams[soundParamIdx].name}</span>
-                    <div className="flex items-center gap-2">
-                      <button className="px-2 py-0.5 rounded bg-gray-700 text-white text-xs" onClick={() => setParams(p => p.map((v, i) => i === soundParamIdx ? Math.max(0, v - 0.05) : v))}>-</button>
-                      <span className="text-xs text-yellow-300 font-bold">{params[soundParamIdx].toFixed(2)}</span>
-                      <button className="px-2 py-0.5 rounded bg-gray-700 text-white text-xs" onClick={() => setParams(p => p.map((v, i) => i === soundParamIdx ? Math.min(1, v + 0.05) : v))}>+</button>
+        {/* Top Section: Screen + Controls */}
+        <div className="flex items-start justify-center w-full mb-6">
+          {/* Screen (Horizontal) */}
+          <div className="bg-black rounded-md border-2 border-gray-500 shadow-inner flex flex-col items-center justify-center" style={{ width: 320, height: 180 }}>
+            {/* Screen Content */}
+            {screen === 'main' && (
+              <div className="flex flex-col items-center w-full p-2">
+                <div className="flex justify-center gap-1 mb-2 w-full">
+                  {chords.map((chord, idx) => (
+                    <div key={idx} className={`flex flex-col items-center w-8 p-1 rounded-sm ${selectedKey === idx ? 'bg-yellow-300' : ''}`}>
+                      <span className={`text-xs font-bold ${selectedKey === idx ? 'text-black' : 'text-white'}`}>{chord.note}</span>
+                      <span className={`text-[0.6rem] ${selectedKey === idx ? 'text-black' : 'text-pink-200'}`}>{chord.type}</span>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              )}
-            </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-white">Key/Scale:</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${encoderFocus === 'scale' ? 'bg-yellow-300 text-black' : 'text-yellow-300'}`}>{scale}</span>
+                </div>
+                <div className="text-[0.7rem] text-pink-200 mt-2 truncate w-full px-2 text-center">{soundParams.map((param, idx) => `${param.name}: ${params[idx]}`).join(' | ')}</div>
+                <div className="flex gap-2 mt-4">
+                  <button className={`text-xs px-2 py-0.5 rounded ${encoderFocus === 'key' ? 'bg-yellow-300 text-black' : 'bg-gray-700 text-white'}`} onClick={() => setEncoderFocus('key')}>Key</button>
+                  <button className={`text-xs px-2 py-0.5 rounded ${encoderFocus === 'scale' ? 'bg-yellow-300 text-black' : 'bg-gray-700 text-white'}`} onClick={() => setEncoderFocus('scale')}>Scale</button>
+                </div>
+              </div>
+            )}
+            {screen === 'chord-select' && (
+              <div className="flex flex-col items-center justify-center w-full h-full">
+                <div className="text-sm text-white mb-2">Select Chord for <span className="text-yellow-300">{chords[selectedKey].note}</span></div>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {chordTypes.map(type => (
+                    <button key={type} className={`px-3 py-1 rounded text-sm font-bold ${chords[selectedKey].type === type ? 'bg-yellow-300 text-black' : 'bg-gray-700 text-white hover:bg-yellow-200 hover:text-black'}`} onClick={() => { handleChordTypeChange(selectedKey, type); setScreen('main'); }}>{type}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 7 Keyboard Keys: 3 on top, 4 on bottom (HiChord style) - navigation only, no text except on screen */}
-          <div className="flex flex-col items-center mb-1 mt-1 gap-1">
-            <div className="flex gap-1 mb-1">
-              {chords.slice(0, 3).map((_, idx) => (
-                <button
-                  key={idx}
-                  className={`w-7 h-7 rounded-lg border-2 shadow font-bold text-xs mb-1 transition-all duration-150 ${selectedKey === idx ? 'bg-yellow-300 border-yellow-500 scale-105' : 'bg-white border-gray-400 hover:bg-yellow-100'}`}
-                  style={{boxShadow: selectedKey === idx ? '0 2px 8px #fffa, 0 1px 4px #0006 inset' : '0 1px 4px #0002, 0 1px 2px #fff2 inset'}}
-                  onClick={() => setSelectedKey(idx)}
-                />
-              ))}
-            </div>
-            <div className="flex gap-1">
-              {chords.slice(3).map((_, idx) => (
-                <button
-                  key={idx+3}
-                  className={`w-8 h-10 rounded-lg border-2 shadow font-bold text-xs mb-1 transition-all duration-150 ${selectedKey === idx+3 ? 'bg-yellow-300 border-yellow-500 scale-105' : 'bg-white border-gray-400 hover:bg-yellow-100'}`}
-                  style={{boxShadow: selectedKey === idx+3 ? '0 2px 8px #fffa, 0 1px 4px #0006 inset' : '0 1px 4px #0002, 0 1px 2px #fff2 inset'}}
-                  onClick={() => setSelectedKey(idx+3)}
-                />
-              ))}
+          {/* Controls (Encoder) */}
+          <div className="flex flex-col items-center ml-8">
+            <button 
+              className="w-12 h-12 bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 rounded-full flex items-center justify-center shadow-lg border-2 border-blue-800 active:scale-95 transition-all duration-150 relative" 
+              title="Sound Design" 
+              onClick={() => { setScreen(screen === 'sound-design' ? 'main' : 'sound-design'); setEncoderFocus('sound'); }}
+            >
+              <FaSlidersH size={24} className="text-white drop-shadow-sm" />
+              <div className="absolute inset-0 rounded-full bg-white opacity-20"></div>
+            </button>
+            <div className="flex flex-col items-center mt-4">
+              <button 
+                className="w-10 h-10 bg-gradient-to-b from-gray-300 to-gray-500 hover:from-gray-200 hover:to-gray-400 rounded-full flex items-center justify-center shadow-md border-2 border-gray-600 active:scale-95 transition-all duration-150 mb-2" 
+                title="Encoder Left" 
+                onClick={() => { if (encoderFocus === 'key') setSelectedKey((selectedKey + 6) % 7); }}
+              >
+                <span className="text-xl font-bold text-gray-700 drop-shadow-sm">&larr;</span>
+              </button>
+              <button 
+                className="w-10 h-10 bg-gradient-to-b from-gray-300 to-gray-500 hover:from-gray-200 hover:to-gray-400 rounded-full flex items-center justify-center shadow-md border-2 border-gray-600 active:scale-95 transition-all duration-150 mb-2 relative" 
+                title="Encoder Click" 
+                onClick={() => { if (screen === 'main') setScreen('chord-select'); else setScreen('main'); }}
+              >
+                <FaRegDotCircle size={20} className="text-blue-700 drop-shadow-sm" />
+                {screen === 'chord-select' && (
+                  <div className="absolute inset-0 rounded-full bg-blue-400 opacity-30 animate-pulse"></div>
+                )}
+              </button>
+              <button 
+                className="w-10 h-10 bg-gradient-to-b from-gray-300 to-gray-500 hover:from-gray-200 hover:to-gray-400 rounded-full flex items-center justify-center shadow-md border-2 border-gray-600 active:scale-95 transition-all duration-150" 
+                title="Encoder Right" 
+                onClick={() => { if (encoderFocus === 'key') setSelectedKey((selectedKey + 1) % 7); }}
+              >
+                <span className="text-xl font-bold text-gray-700 drop-shadow-sm">&rarr;</span>
+              </button>
             </div>
           </div>
-
-          {/* Key/Scale Selector removed from below synth, now only on screen and navigable by encoder */}
         </div>
-        {/* Drop shadow for synth body */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[180px] h-6 bg-black/20 rounded-b-2xl blur-2xl z-0" style={{filter:'blur(8px)'}} />
+
+        {/* Bottom Section: Keys */}
+        <div className="flex flex-col items-center mt-2">
+          {/* Top row of keys (3) */}
+          <div className="flex gap-3 mb-2">
+            {chords.slice(0, 3).map((chord, idx) => (
+              <button
+                key={idx}
+                className={`w-16 h-20 rounded-lg border-2 shadow-md transition-all duration-150 flex flex-col items-center justify-center relative overflow-hidden ${
+                  selectedKey === idx 
+                    ? 'bg-yellow-300 border-yellow-500 scale-105' 
+                    : 'bg-white border-gray-400 hover:bg-yellow-100 hover:scale-102'
+                }`}
+                style={{
+                  boxShadow: selectedKey === idx 
+                    ? '0 4px 12px rgba(255,255,0,0.5), 0 2px 5px rgba(0,0,0,0.4) inset' 
+                    : '0 2px 6px rgba(0,0,0,0.2), 0 2px 4px rgba(255,255,255,0.4) inset'
+                }}
+                onClick={() => handleKeyPress(idx)}
+                onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={(e) => e.currentTarget.style.transform = selectedKey === idx ? 'scale(1.05)' : 'scale(1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = selectedKey === idx ? 'scale(1.05)' : 'scale(1)'}
+              >
+                {selectedKey === idx && (
+                  <div className="absolute inset-0 bg-yellow-400 opacity-20 rounded-lg animate-pulse"></div>
+                )}
+              </button>
+            ))}
+          </div>
+          {/* Bottom row of keys (4) */}
+          <div className="flex gap-3">
+            {chords.slice(3).map((chord, idx) => (
+              <button
+                key={idx + 3}
+                className={`w-16 h-24 rounded-lg border-2 shadow-md transition-all duration-150 flex flex-col items-center justify-center relative overflow-hidden ${
+                  selectedKey === idx + 3 
+                    ? 'bg-yellow-300 border-yellow-500 scale-105' 
+                    : 'bg-white border-gray-400 hover:bg-yellow-100 hover:scale-102'
+                }`}
+                style={{
+                  boxShadow: selectedKey === idx + 3 
+                    ? '0 4px 12px rgba(255,255,0,0.5), 0 2px 5px rgba(0,0,0,0.4) inset' 
+                    : '0 2px 6px rgba(0,0,0,0.2), 0 2px 4px rgba(255,255,255,0.4) inset'
+                }}
+                onClick={() => handleKeyPress(idx + 3)}
+                onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                onMouseUp={(e) => e.currentTarget.style.transform = selectedKey === idx + 3 ? 'scale(1.05)' : 'scale(1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = selectedKey === idx + 3 ? 'scale(1.05)' : 'scale(1)'}
+              >
+                {selectedKey === idx + 3 && (
+                  <div className="absolute inset-0 bg-yellow-400 opacity-20 rounded-lg animate-pulse"></div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </main>
   );

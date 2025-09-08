@@ -24,3 +24,222 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Circuit board pattern using CSS */
+.circuit-bg {
+  /* White background with subtle circuit grid pattern */
+  background-color: white;
+  background-image: 
+    linear-gradient(90deg, rgba(15, 118, 110, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(15, 118, 110, 0.05) 1px, transparent 1px),
+    radial-gradient(circle at 20% 20%, rgba(15, 118, 110, 0.05) 1px, transparent 1px),
+    radial-gradient(circle at 80% 80%, rgba(15, 118, 110, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px, 50px 50px, 100px 100px, 100px 100px;
+  background-position: 0 0, 0 0, 0 0, 50px 50px;
+}
+
+/* PCB Traces styling */
+.pcb-traces-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+}
+
+.pcb-trace {
+  position: absolute;
+  opacity: 0.8;
+}
+
+/* Corner traces - original */
+.trace-1 {
+  top: 10%;
+  left: 5%;
+  width: 200px;
+  height: 150px;
+}
+
+.trace-2 {
+  top: 15%;
+  right: 8%;
+  width: 180px;
+  height: 120px;
+}
+
+.trace-3 {
+  bottom: 20%;
+  left: 10%;
+  width: 160px;
+  height: 140px;
+}
+
+.trace-4 {
+  bottom: 25%;
+  right: 5%;
+  width: 200px;
+  height: 100px;
+}
+
+.trace-5 {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120px;
+  height: 120px;
+  opacity: 0.4;
+}
+
+/* New traces for full coverage */
+.trace-6 {
+  top: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  height: 80px;
+}
+
+.trace-7 {
+  top: 30%;
+  left: 2%;
+  width: 100px;
+  height: 180px;
+}
+
+.trace-8 {
+  top: 35%;
+  right: 3%;
+  width: 120px;
+  height: 160px;
+}
+
+.trace-9 {
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 90px;
+}
+
+.trace-10 {
+  top: 25%;
+  left: 25%;
+  width: 60px;
+  height: 60px;
+  opacity: 0.7;
+}
+
+.trace-11 {
+  top: 70%;
+  left: 70%;
+  width: 80px;
+  height: 50px;
+  opacity: 0.6;
+}
+
+.trace-12 {
+  top: 45%;
+  right: 25%;
+  width: 70px;
+  height: 70px;
+  opacity: 0.7;
+}
+
+/* Full screen circuit trace following animations */
+@keyframes traceFlow1 {
+  0% { transform: translate(10vw, 10vh); opacity: 0.8; }
+  25% { transform: translate(50vw, 10vh); opacity: 1; }
+  50% { transform: translate(50vw, 50vh); opacity: 0.9; }
+  75% { transform: translate(90vw, 50vh); opacity: 1; }
+  100% { transform: translate(90vw, 90vh); opacity: 0.8; }
+}
+
+@keyframes traceFlow2 {
+  0% { transform: translate(90vw, 10vh); opacity: 0.7; }
+  25% { transform: translate(50vw, 10vh); opacity: 1; }
+  50% { transform: translate(50vw, 50vh); opacity: 0.9; }
+  75% { transform: translate(10vw, 50vh); opacity: 1; }
+  100% { transform: translate(10vw, 90vh); opacity: 0.7; }
+}
+
+@keyframes traceFlow3 {
+  0% { transform: translate(10vw, 50vh); opacity: 0.6; }
+  33% { transform: translate(50vw, 50vh); opacity: 0.9; }
+  66% { transform: translate(90vw, 50vh); opacity: 1; }
+  100% { transform: translate(90vw, 10vh); opacity: 0.6; }
+}
+
+@keyframes traceFlow4 {
+  0% { transform: translate(50vw, 90vh); opacity: 0.5; }
+  25% { transform: translate(50vw, 50vh); opacity: 0.8; }
+  50% { transform: translate(25vw, 25vh); opacity: 1; }
+  75% { transform: translate(75vw, 25vh); opacity: 0.9; }
+  100% { transform: translate(75vw, 75vh); opacity: 0.5; }
+}
+
+@keyframes traceFlow5 {
+  0% { transform: translate(25vw, 25vh); opacity: 0.4; }
+  50% { transform: translate(75vw, 75vh); opacity: 0.8; }
+  100% { transform: translate(25vw, 75vh); opacity: 0.4; }
+}
+
+@keyframes traceFlow6 {
+  0% { transform: translate(75vw, 25vh); opacity: 0.3; }
+  50% { transform: translate(25vw, 75vh); opacity: 0.7; }
+  100% { transform: translate(75vw, 25vh); opacity: 0.3; }
+}
+
+.circuit-particle {
+  position: fixed;
+  width: 5px;
+  height: 5px;
+  background: #10b981;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
+}
+
+.circuit-particle:nth-child(1) {
+  animation: traceFlow1 8s ease-in-out infinite;
+  background: #3b82f6;
+  color: #3b82f6;
+}
+
+.circuit-particle:nth-child(2) {
+  animation: traceFlow2 10s ease-in-out infinite;
+  animation-delay: 2s;
+  background: #10b981;
+  color: #10b981;
+}
+
+.circuit-particle:nth-child(3) {
+  animation: traceFlow3 6s linear infinite;
+  animation-delay: 1s;
+  background: #f59e0b;
+  color: #f59e0b;
+}
+
+.circuit-particle:nth-child(4) {
+  animation: traceFlow4 12s ease-in-out infinite;
+  animation-delay: 3s;
+  background: #ef4444;
+  color: #ef4444;
+}
+
+.circuit-particle:nth-child(5) {
+  animation: traceFlow5 9s ease-in-out infinite;
+  animation-delay: 4.5s;
+  background: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.circuit-particle:nth-child(6) {
+  animation: traceFlow6 11s ease-in-out infinite;
+  animation-delay: 6s;
+  background: #06b6d4;
+  color: #06b6d4;
+}

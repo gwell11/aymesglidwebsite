@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   description: "The portfolio of Aymes Glidewell — creative technologist, artist, and builder.",
 };
 
+import Navbar from "@/components/Navbar";
+import BackButton from "@/components/BackButton";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,8 +29,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased circuit-bg`}
       >
+        <Navbar />
+        <BackButton />
         {children}
       </body>
     </html>
