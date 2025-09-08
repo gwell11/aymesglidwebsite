@@ -17,7 +17,7 @@ export default function Home() {
           <h1 className="text-5xl font-extrabold mb-2 text-teal-800">Aymes Glidewell</h1>
           <h2 className="text-2xl font-medium mb-6 text-gray-700">Software Application Engineer</h2>
           <p className="text-lg text-gray-800 mb-8">
-            I'm a Software Applications Engineer with a background in Electrical Engineering and embedded systems. I design and program hardware–software solutions, from building automation controls to custom electronics. My focus is on software and embedded development, PCB design, and creating interesting, user friendly products.
+            I&apos;m a Software Applications Engineer with a background in Electrical Engineering and embedded systems. I design and program hardware–software solutions, from building automation controls to custom electronics. My focus is on software and embedded development, PCB design, and creating interesting, user friendly products.
           </p>
           <button
             className="bg-teal-600 text-white px-8 py-3 rounded-lg shadow-lg hover:bg-green-600 transition text-xl font-semibold"

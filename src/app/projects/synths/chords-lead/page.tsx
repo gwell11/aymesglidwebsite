@@ -59,7 +59,7 @@ export default function ChordsSynth2D() {
   // Initialize audio context
   const initAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = new (window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     }
     return audioContextRef.current;
   }, []);

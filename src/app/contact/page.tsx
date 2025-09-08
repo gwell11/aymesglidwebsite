@@ -9,7 +9,7 @@ export default function ContactPage() {
       <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-10 max-w-2xl relative z-10">
         <h1 className="text-4xl font-extrabold mb-4 text-teal-800">Get In Touch</h1>
         <p className="text-lg text-gray-700 mb-8">
-          I'm always open to discussing new projects, creative ideas, or opportunities to be part of an ambitious team. Feel free to reach out.
+          I&apos;m always open to discussing new projects, creative ideas, or opportunities to be part of an ambitious team. Feel free to reach out.
         </p>
         <a
           href="mailto:aymes.glidewell@gmail.com"

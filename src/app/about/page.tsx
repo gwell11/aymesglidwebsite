@@ -1,9 +1,7 @@
 "use client";
-import { useRouter } from "next/navigation";
 import PCBTraces from "../../components/PCBTraces";
 
 export default function AboutPage() {
-  const router = useRouter();
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-8 text-center relative">
       <PCBTraces />
@@ -42,9 +40,9 @@ export default function AboutPage() {
           </div>
           
           <div className="mt-6 pt-4 border-t border-gray-200">
-            <p className="text-gray-700">
-              My background in Electrical Engineering and passion for embedded systems drives my approach to creating innovative hardware-software solutions. I specialize in PCB design and developing creative, practical designs that solve real-world challenges.
-            </p>
+                    <p className="text-lg text-gray-800 leading-relaxed">
+          I&apos;m a Software Applications Engineer with a background in Electrical Engineering and embedded systems. I design and program hardware–software solutions, from building automation controls to custom electronics. My focus is on embedded development, PCB design, and creating interesting, useful and creative designs.
+        </p>
           </div>
         </div>
       </div>
