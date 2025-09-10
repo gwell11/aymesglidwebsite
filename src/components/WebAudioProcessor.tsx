@@ -59,7 +59,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       
     } catch (error) {
       console.error('Processing error:', error);
-      setMessage('Error processing audio. Please try a different file.');
+      setMessage('Error processing audio. Please try a different file or check browser compatibility.');
     } finally {
       setIsProcessing(false);
     }
@@ -184,14 +184,14 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   return (
     <div className={`bg-gray-900/90 backdrop-blur-sm border border-green-400/30 rounded-lg p-6 ${className}`}>
       <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-        🎵 Web Audio Processor
-        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">BROWSER-BASED</span>
+        🎵 AI Song Nuance Generator
+        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">WEB VERSION</span>
       </h3>
       
       <p className="text-gray-300 mb-4 text-sm">
-        Upload an audio file and process it entirely in your browser with Web Audio API effects.
+        Upload your audio files and enhance them with AI-powered effects processing. All processing happens locally in your browser - no server uploads required!
         <span className="block mt-2 text-green-400 font-medium">
-          ✨ No downloads required - runs completely in your browser!
+          ✨ Instant processing - Upload → Enhance → Download
         </span>
       </p>
       
@@ -241,8 +241,8 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       </div>
       
       <div className="mt-4 text-xs text-gray-400 p-3 bg-gray-800/50 rounded-lg">
-        <strong className="text-gray-300">🌐 Browser Effects:</strong> Reverb, delay, filtering, and gain processing 
-        using Web Audio API. No server required - all processing happens locally in your browser!
+        <strong className="text-gray-300">🌐 AI Audio Effects:</strong> Reverb, delay, filtering, and gain processing 
+        using advanced Web Audio API. Real-time browser processing with downloadable results!
       </div>
     </div>
   );

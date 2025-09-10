@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import PCBTraces from '../../components/PCBTraces';
-import NuanceGenerator from '../../components/NuanceGenerator';
 import WebAudioProcessor from '../../components/WebAudioProcessor';
 
 export default function ProjectsPage() {
@@ -28,12 +27,7 @@ export default function ProjectsPage() {
       <section className="max-w-3xl w-full bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-8 mb-8 relative z-10">
         <h2 className="text-2xl font-bold mb-2 text-gray-800">Project Samples</h2>
         
-        {/* Interactive AI Nuance Generator */}
-        <div className="mb-6">
-          <NuanceGenerator />
-        </div>
-        
-        {/* Web Audio Processor */}
+        {/* AI Audio Processor */}
         <div className="mb-6">
           <WebAudioProcessor />
         </div>
@@ -46,7 +40,7 @@ export default function ProjectsPage() {
                 <span className="text-lg font-semibold text-purple-800">AI Song Nuance Generator</span>
                 <span className="ml-2 px-2 py-1 bg-green-500 text-white text-xs rounded-full">NEW</span>
               </div>
-              <p className="text-gray-700 mb-3">Advanced AI tool that adds unique, procedurally-generated musical nuances to songs. Try the instant browser version above, or download the complete tool with 10+ advanced audio effects for professional audio processing.</p>
+              <p className="text-gray-700 mb-3">Advanced AI tool that adds unique, procedurally-generated musical nuances to songs. Upload your audio files above for instant browser-based processing, or download the complete tool from GitHub for professional audio production with 10+ advanced effects.</p>
               <div className="flex flex-wrap gap-2 mb-3">
                 <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs rounded">Python</span>
                 <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs rounded">Web Audio API</span>
@@ -56,11 +50,11 @@ export default function ProjectsPage() {
                 <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs rounded">DSP</span>
               </div>
               <div className="flex gap-3">
-                <a href="http://localhost:5001" target="_blank" rel="noopener noreferrer" className="text-purple-700 hover:text-green-600 underline font-semibold transition">🚀 Try Live Demo</a>
+                <a href="https://github.com/gwell11/aymesglidwebsite/tree/main/nuance-generator" target="_blank" rel="noopener noreferrer" className="text-purple-700 hover:text-green-600 underline font-semibold transition">� Download Full Tool</a>
                 <span className="text-gray-500">|</span>
-                <a href="https://github.com/gwell11/aymesglidwebsite/tree/main/nuance-generator" target="_blank" rel="noopener noreferrer" className="text-purple-700 hover:text-green-600 underline transition">📁 View Code</a>
+                <a href="https://github.com/gwell11/aymesglidwebsite/tree/main/nuance-generator" target="_blank" rel="noopener noreferrer" className="text-purple-700 hover:text-green-600 underline transition">📁 View Source Code</a>
               </div>
-              <p className="text-sm text-gray-600 mt-2 italic">Features: Real-time AI synthesis, 10 audio effects, parameter control, unique sound generation</p>
+              <p className="text-sm text-gray-600 mt-2 italic">Features: Browser-based audio processing, Web Audio API effects, instant file upload, downloadable results + Full Python tool with 10+ professional effects</p>
             </div>
           </li>
           <li>
