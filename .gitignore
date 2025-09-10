@@ -39,3 +39,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python virtual environments
+venv/
+env/
+.venv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# AI Tool generated files
+*.wav
+*.mp3
+*.flac
+temp_*
+
+# IDE
+.vscode/
+.idea/

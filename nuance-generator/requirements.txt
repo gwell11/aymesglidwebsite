@@ -1,0 +1,7 @@
+librosa>=0.10.0
+madmom>=0.16.1
+numpy>=1.24.0
+soundfile>=0.12.1
+scipy>=1.10.0
+matplotlib>=3.6.0
+flask>=2.3.0

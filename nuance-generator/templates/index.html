@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Song Nuance Generator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #f7fafc;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        .upload-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .process-btn {
+            background: #48bb78;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+            transition: background 0.3s;
+        }
+        
+        .process-btn:hover {
+            background: #38a169;
+        }
+        
+        .process-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        
+        .analysis-results {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .success {
+            background: #c6f6d5;
+            color: #2d7d32;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .file-info {
+            background: #ebf8ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #718096;
+            margin-top: 5px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .parameters-panel {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .parameters-panel h3 {
+            margin-top: 0;
+            color: #4a5568;
+            text-align: center;
+        }
+        
+        .parameter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .parameter {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .parameter label {
+            display: block;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 8px;
+        }
+        
+        .parameter input[type="range"] {
+            width: 100%;
+            margin: 8px 0;
+        }
+        
+        .param-value {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .param-desc {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .preset-btn {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .preset-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .toggle-params {
+            background: #ed8936;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+            transition: background 0.3s;
+        }
+        
+        .toggle-params:hover {
+            background: #dd6b20;
+        }
+        
+        .parameters-panel {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .parameters-panel h3 {
+            margin-top: 0;
+            color: #4a5568;
+            text-align: center;
+        }
+        
+        .parameter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .parameter {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .parameter label {
+            font-weight: bold;
+            color: #2d3748;
+            font-size: 14px;
+        }
+        
+        .parameter input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        .param-value {
+            text-align: center;
+            font-weight: bold;
+            color: #667eea;
+            background: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .param-desc {
+            font-size: 11px;
+            color: #718096;
+            text-align: center;
+            line-height: 1.3;
+        }
+        
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .preset-btn {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .preset-btn:hover {
+            background: #3182ce;
+        }
+        
+        .toggle-params {
+            background: #ed8936;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+            transition: background 0.3s;
+        }
+        
+        .toggle-params:hover {
+            background: #dd6b20;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 AI Song Nuance Generator</h1>
+        <p class="subtitle">Add subtle AI-generated nuances to make your songs feel less repetitive</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>📁 Drop your audio file here or click to browse</p>
+            <p style="font-size: 14px; color: #718096;">Supports WAV, MP3, FLAC, M4A (max 50MB)</p>
+            <input type="file" id="fileInput" accept=".wav,.mp3,.flac,.m4a">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+        </div>
+        
+        <div class="file-info" id="fileInfo">
+            <strong>Selected file:</strong> <span id="fileName"></span>
+        </div>
+        
+        <!-- Parameter Controls -->
+        <div class="parameters-panel" id="parametersPanel" style="display: none;">
+            <h3>🎛️ AI Generation Parameters</h3>
+            <div class="parameter-grid">
+                <div class="parameter">
+                    <label for="creativityLevel">Creativity Level:</label>
+                    <input type="range" id="creativityLevel" min="0.1" max="1.0" step="0.1" value="0.85">
+                    <span class="param-value" id="creativityValue">0.85</span>
+                    <div class="param-desc">How often AI generates unique sounds vs. using samples</div>
+                </div>
+                
+                <div class="parameter">
+                    <label for="nuanceDensity">Nuance Density:</label>
+                    <input type="range" id="nuanceDensity" min="0.1" max="3.0" step="0.1" value="1.0">
+                    <span class="param-value" id="densityValue">1.0</span>
+                    <div class="param-desc">How many nuances to add (0.1 = sparse, 3.0 = dense)</div>
+                </div>
+                
+                <div class="parameter">
+                    <label for="intensity">Intensity:</label>
+                    <input type="range" id="intensity" min="0.1" max="1.0" step="0.1" value="0.7">
+                    <span class="param-value" id="intensityValue">0.7</span>
+                    <div class="param-desc">Overall volume and energy level</div>
+                </div>
+                
+                <div class="parameter">
+                    <label for="texturePreference">Sound Type:</label>
+                    <input type="range" id="texturePreference" min="0.0" max="1.0" step="0.1" value="0.5">
+                    <span class="param-value" id="textureValue">0.5</span>
+                    <div class="param-desc">0 = More percussion, 1 = More textures/pads</div>
+                </div>
+                
+                <div class="parameter">
+                    <label for="randomness">Timing Randomness:</label>
+                    <input type="range" id="randomness" min="0.0" max="1.0" step="0.1" value="0.5">
+                    <span class="param-value" id="randomnessValue">0.5</span>
+                    <div class="param-desc">How much to vary the timing of effects</div>
+                </div>
+                
+                <div class="parameter">
+                    <label for="stereoWidth">Stereo Width:</label>
+                    <input type="range" id="stereoWidth" min="0.0" max="1.0" step="0.1" value="0.5">
+                    <span class="param-value" id="stereoValue">0.5</span>
+                    <div class="param-desc">How wide to spread sounds in stereo field</div>
+                </div>
+            </div>
+            
+            <div class="preset-buttons">
+                <button onclick="loadPreset('subtle')" class="preset-btn">Subtle</button>
+                <button onclick="loadPreset('balanced')" class="preset-btn">Balanced</button>
+                <button onclick="loadPreset('creative')" class="preset-btn">Creative</button>
+                <button onclick="loadPreset('experimental')" class="preset-btn">Experimental</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="upload-btn" onclick="analyzeFile()" id="analyzeBtn" disabled>🔍 Analyze Song</button>
+            <button class="toggle-params" onclick="toggleParameters()" id="toggleBtn">⚙️ Show Parameters</button>
+            <button class="process-btn" onclick="processFile()" id="processBtn" disabled>🎨 Add Nuances</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">Processing...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+        
+        <div class="analysis-results" id="analysisResults">
+            <h3>📊 Analysis Results</h3>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="tempoValue">-</div>
+                    <div class="stat-label">BPM</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="durationValue">-</div>
+                    <div class="stat-label">Duration (s)</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="beatsValue">-</div>
+                    <div class="stat-label">Beats</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="eventsValue">-</div>
+                    <div class="stat-label">Nuances Planned</div>
+                </div>
+            </div>
+            <p style="margin-top: 15px; color: #718096;">Ready to add nuances! Click "Add Nuances" to process your song.</p>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        
+        // File upload handling
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+        
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                selectedFile = file;
+                fileName.textContent = file.name;
+                fileInfo.style.display = 'block';
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('processBtn').disabled = false;
+                hideMessages();
+            }
+        }
+        
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loading').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function showError(message) {
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        function showSuccess(message) {
+            document.getElementById('success').textContent = message;
+            document.getElementById('success').style.display = 'block';
+        }
+        
+        function hideMessages() {
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+            document.getElementById('analysisResults').style.display = 'none';
+        }
+        
+        async function analyzeFile() {
+            if (!selectedFile) return;
+            
+            hideMessages();
+            showLoading('Analyzing your song...');
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('tempoValue').textContent = result.analysis.tempo.toFixed(1);
+                    document.getElementById('durationValue').textContent = result.analysis.duration.toFixed(1);
+                    document.getElementById('beatsValue').textContent = result.analysis.num_beats;
+                    document.getElementById('eventsValue').textContent = result.events;
+                    
+                    document.getElementById('analysisResults').style.display = 'block';
+                    showSuccess('Analysis complete! Your song is ready for nuance enhancement.');
+                } else {
+                    showError(result.error || 'Analysis failed');
+                }
+            } catch (error) {
+                showError('Failed to analyze file: ' + error.message);
+            }
+            
+            hideLoading();
+        }
+        
+        async function processFile() {
+            if (!selectedFile) return;
+            
+            hideMessages();
+            showLoading('Adding nuances to your song... This may take a minute.');
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            // Add parameters to form data
+            formData.append('creativity_level', document.getElementById('creativityLevel').value);
+            formData.append('nuance_density', document.getElementById('nuanceDensity').value);
+            formData.append('intensity', document.getElementById('intensity').value);
+            formData.append('texture_preference', document.getElementById('texturePreference').value);
+            formData.append('randomness', document.getElementById('randomness').value);
+            formData.append('stereo_width', document.getElementById('stereoWidth').value);
+            
+            try {
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `enhanced_${selectedFile.name}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    showSuccess('🎉 Success! Your enhanced song has been downloaded.');
+                } else {
+                    const result = await response.json();
+                    showError(result.error || 'Processing failed');
+                }
+            } catch (error) {
+                showError('Failed to process file: ' + error.message);
+            }
+            
+            hideLoading();
+        }
+        
+        function toggleParameters() {
+            const panel = document.getElementById('parametersPanel');
+            const btn = document.getElementById('toggleBtn');
+            
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                btn.textContent = '⚙️ Hide Parameters';
+            } else {
+                panel.style.display = 'none';
+                btn.textContent = '⚙️ Show Parameters';
+            }
+        }
+        
+        function updateParameterValues() {
+            document.getElementById('creativityValue').textContent = document.getElementById('creativityLevel').value;
+            document.getElementById('densityValue').textContent = document.getElementById('nuanceDensity').value;
+            document.getElementById('intensityValue').textContent = document.getElementById('intensity').value;
+            document.getElementById('textureValue').textContent = document.getElementById('texturePreference').value;
+            document.getElementById('randomnessValue').textContent = document.getElementById('randomness').value;
+            document.getElementById('stereoValue').textContent = document.getElementById('stereoWidth').value;
+        }
+        
+        function loadPreset(preset) {
+            const presets = {
+                subtle: {
+                    creativity_level: 0.6,
+                    nuance_density: 0.5,
+                    intensity: 0.4,
+                    texture_preference: 0.7,
+                    randomness: 0.3,
+                    stereo_width: 0.3
+                },
+                balanced: {
+                    creativity_level: 0.85,
+                    nuance_density: 1.0,
+                    intensity: 0.7,
+                    texture_preference: 0.5,
+                    randomness: 0.5,
+                    stereo_width: 0.5
+                },
+                creative: {
+                    creativity_level: 0.95,
+                    nuance_density: 1.5,
+                    intensity: 0.8,
+                    texture_preference: 0.3,
+                    randomness: 0.7,
+                    stereo_width: 0.7
+                },
+                experimental: {
+                    creativity_level: 1.0,
+                    nuance_density: 2.5,
+                    intensity: 0.9,
+                    texture_preference: 0.2,
+                    randomness: 0.9,
+                    stereo_width: 0.9
+                }
+            };
+            
+            const values = presets[preset];
+            if (values) {
+                document.getElementById('creativityLevel').value = values.creativity_level;
+                document.getElementById('nuanceDensity').value = values.nuance_density;
+                document.getElementById('intensity').value = values.intensity;
+                document.getElementById('texturePreference').value = values.texture_preference;
+                document.getElementById('randomness').value = values.randomness;
+                document.getElementById('stereoWidth').value = values.stereo_width;
+                updateParameterValues();
+            }
+        }
+        
+        // Add event listeners for real-time parameter updates
+        document.addEventListener('DOMContentLoaded', function() {
+            const sliders = ['creativityLevel', 'nuanceDensity', 'intensity', 'texturePreference', 'randomness', 'stereoWidth'];
+            sliders.forEach(id => {
+                document.getElementById(id).addEventListener('input', updateParameterValues);
+            });
+            updateParameterValues();
+        });
+    </script>
+</body>
+</html>
