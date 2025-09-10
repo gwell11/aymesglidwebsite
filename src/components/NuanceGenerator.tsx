@@ -31,7 +31,7 @@ export default function NuanceGenerator({ className = '' }: NuanceGeneratorProps
       const data = await response.json();
       
       if (data.status === 'demo-completed') {
-        setMessage(`🎉 Demo completed! Generated ${data.simulation.unique_sounds_generated} unique sounds with ${data.simulation.effects_applied.join(', ')} effects. For full audio processing, try the local version!`);
+        setMessage(`🎉 Demo completed! Generated ${data.simulation.unique_sounds_generated} unique sounds with ${data.simulation.effects_applied.join(', ')} effects. Want to process real audio? Download the full tool below!`);
       } else if (data.status === 'redirect-to-local') {
         setMessage('AI tool is available locally! Visit http://localhost:5001 for full functionality.');
         // Optionally open in new tab
@@ -55,6 +55,9 @@ export default function NuanceGenerator({ className = '' }: NuanceGeneratorProps
       
       <p className="text-gray-300 mb-4 text-sm">
         Advanced AI tool that adds unique musical nuances to songs using procedural audio synthesis and 10+ audio effects.
+        <span className="block mt-2 text-green-400 font-medium">
+          ✨ Free & Open Source - Download and use the full tool locally!
+        </span>
       </p>
       
       <div className="flex flex-wrap gap-2 mb-4">
@@ -91,16 +94,21 @@ export default function NuanceGenerator({ className = '' }: NuanceGeneratorProps
             rel="noopener noreferrer"
             className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm text-center transition-colors duration-200"
           >
-            Full Local Demo
+            🖥️ Local Demo
           </a>
           <a
             href="https://github.com/gwell11/aymesglidwebsite/tree/main/nuance-generator"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm text-center transition-colors duration-200"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm text-center transition-colors duration-200 font-medium"
           >
-            View Code
+            📦 Download & Use
           </a>
+        </div>
+        
+        <div className="text-xs text-gray-400 mt-3 p-3 bg-gray-800/50 rounded-lg">
+          <strong className="text-gray-300">🚀 Get the full tool:</strong> Clone from GitHub, install Python dependencies, 
+          and process your own audio files with real AI enhancement. Complete setup instructions included!
         </div>
       </div>
     </div>
