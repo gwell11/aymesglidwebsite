@@ -30,6 +30,35 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     dryWetMix: 0.7
   });
 
+  // Preset configurations
+  const presets = {
+    subtle: {
+      name: "Subtle Enhancement",
+      description: "Light polish for professional sound",
+      params: { gain: 1.2, filterFreq: 60, reverbDuration: 1, reverbDecay: 1.5, delayTime: 0.15, delayFeedback: 0.2, dryWetMix: 0.85 }
+    },
+    warm: {
+      name: "Warm & Spacious", 
+      description: "Rich reverb for intimate recordings",
+      params: { gain: 1.3, filterFreq: 50, reverbDuration: 3, reverbDecay: 2.5, delayTime: 0.25, delayFeedback: 0.3, dryWetMix: 0.6 }
+    },
+    dramatic: {
+      name: "Dramatic Effect",
+      description: "Bold processing for creative impact", 
+      params: { gain: 1.6, filterFreq: 120, reverbDuration: 4, reverbDecay: 3, delayTime: 0.6, delayFeedback: 0.5, dryWetMix: 0.4 }
+    },
+    clean: {
+      name: "Clean Boost",
+      description: "Pure amplification with minimal coloring",
+      params: { gain: 1.5, filterFreq: 80, reverbDuration: 0.5, reverbDecay: 1, delayTime: 0.1, delayFeedback: 0.1, dryWetMix: 0.9 }
+    }
+  };
+
+  const applyPreset = (presetKey: keyof typeof presets) => {
+    setParameters(presets[presetKey].params);
+    setMessage(`Applied "${presets[presetKey].name}" preset`);
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type.startsWith('audio/')) {
@@ -217,13 +246,34 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
           />
         </div>
         
+        {/* Preset Buttons */}
+        <div className="bg-gray-800/50 rounded-lg p-4">
+          <h4 className="text-white font-semibold text-sm mb-3">� Quick Presets</h4>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(presets).map(([key, preset]) => (
+              <button
+                key={key}
+                onClick={() => applyPreset(key as keyof typeof presets)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs transition-colors duration-200"
+                title={preset.description}
+              >
+                {preset.name}
+              </button>
+            ))}
+          </div>
+          <p className="text-gray-400 text-xs mt-2">Click a preset to automatically configure all settings</p>
+        </div>
+
         {/* Audio Parameters */}
-        <div className="bg-gray-800/50 rounded-lg p-4 space-y-3">
-          <h4 className="text-white font-semibold text-sm mb-3">🎛️ Audio Parameters</h4>
+        <div className="bg-gray-800/50 rounded-lg p-4 space-y-4">
+          <h4 className="text-white font-semibold text-sm mb-3">🎛️ Custom Settings</h4>
           
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-4">
             <div>
-              <label className="block text-gray-300 text-xs mb-1">Gain Boost</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-gray-300 text-sm font-medium">🔊 Volume Boost</label>
+                <span className="text-blue-400 text-sm">{parameters.gain.toFixed(1)}x</span>
+              </div>
               <input
                 type="range"
                 min="0.5"
@@ -231,27 +281,33 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
                 step="0.1"
                 value={parameters.gain}
                 onChange={(e) => setParameters(prev => ({ ...prev, gain: parseFloat(e.target.value) }))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
               />
-              <span className="text-gray-400 text-xs">{parameters.gain.toFixed(1)}x</span>
+              <p className="text-gray-400 text-xs mt-1">Higher = louder output (1.0 = no change)</p>
             </div>
             
             <div>
-              <label className="block text-gray-300 text-xs mb-1">Filter (Hz)</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-gray-300 text-sm font-medium">🎛️ Bass Cut</label>
+                <span className="text-blue-400 text-sm">{parameters.filterFreq}Hz</span>
+              </div>
               <input
                 type="range"
                 min="20"
-                max="500"
+                max="200"
                 step="10"
                 value={parameters.filterFreq}
                 onChange={(e) => setParameters(prev => ({ ...prev, filterFreq: parseInt(e.target.value) }))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
               />
-              <span className="text-gray-400 text-xs">{parameters.filterFreq}Hz</span>
+              <p className="text-gray-400 text-xs mt-1">Higher = removes more low frequencies (cleaner sound)</p>
             </div>
             
             <div>
-              <label className="block text-gray-300 text-xs mb-1">Reverb Time</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-gray-300 text-sm font-medium">🏛️ Room Size</label>
+                <span className="text-blue-400 text-sm">{parameters.reverbDuration.toFixed(1)}s</span>
+              </div>
               <input
                 type="range"
                 min="0.5"
@@ -259,13 +315,16 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
                 step="0.5"
                 value={parameters.reverbDuration}
                 onChange={(e) => setParameters(prev => ({ ...prev, reverbDuration: parseFloat(e.target.value) }))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
               />
-              <span className="text-gray-400 text-xs">{parameters.reverbDuration.toFixed(1)}s</span>
+              <p className="text-gray-400 text-xs mt-1">Higher = sounds like a bigger room (more echo)</p>
             </div>
             
             <div>
-              <label className="block text-gray-300 text-xs mb-1">Delay Time</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-gray-300 text-sm font-medium">⏱️ Echo Timing</label>
+                <span className="text-blue-400 text-sm">{(parameters.delayTime * 1000).toFixed(0)}ms</span>
+              </div>
               <input
                 type="range"
                 min="0.1"
@@ -273,13 +332,16 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
                 step="0.1"
                 value={parameters.delayTime}
                 onChange={(e) => setParameters(prev => ({ ...prev, delayTime: parseFloat(e.target.value) }))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
               />
-              <span className="text-gray-400 text-xs">{parameters.delayTime.toFixed(1)}s</span>
+              <p className="text-gray-400 text-xs mt-1">Higher = longer delay between echoes</p>
             </div>
             
             <div>
-              <label className="block text-gray-300 text-xs mb-1">Delay Feedback</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-gray-300 text-sm font-medium">🔄 Echo Repeats</label>
+                <span className="text-blue-400 text-sm">{Math.round(parameters.delayFeedback * 10)}/10</span>
+              </div>
               <input
                 type="range"
                 min="0"
@@ -287,13 +349,16 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
                 step="0.1"
                 value={parameters.delayFeedback}
                 onChange={(e) => setParameters(prev => ({ ...prev, delayFeedback: parseFloat(e.target.value) }))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
               />
-              <span className="text-gray-400 text-xs">{parameters.delayFeedback.toFixed(1)}</span>
+              <p className="text-gray-400 text-xs mt-1">Higher = more echo repetitions</p>
             </div>
             
             <div>
-              <label className="block text-gray-300 text-xs mb-1">Dry/Wet Mix</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-gray-300 text-sm font-medium">🎚️ Effect Intensity</label>
+                <span className="text-blue-400 text-sm">{Math.round((1 - parameters.dryWetMix) * 100)}%</span>
+              </div>
               <input
                 type="range"
                 min="0"
@@ -301,9 +366,9 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
                 step="0.1"
                 value={parameters.dryWetMix}
                 onChange={(e) => setParameters(prev => ({ ...prev, dryWetMix: parseFloat(e.target.value) }))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
               />
-              <span className="text-gray-400 text-xs">{parameters.dryWetMix.toFixed(1)}</span>
+              <p className="text-gray-400 text-xs mt-1">Left = more effects, Right = more original sound</p>
             </div>
           </div>
         </div>
