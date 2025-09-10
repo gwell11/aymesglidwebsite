@@ -1,0 +1,60 @@
+{
+  "input_file": "test_song.wav",
+  "output_file": "test_song_with_nuances.wav",
+  "analysis": {
+    "tempo": 129.19921875,
+    "duration": 20.0,
+    "num_beats": 43,
+    "num_sections": 2
+  },
+  "events": [
+    {
+      "time": 6.270858968875325,
+      "type": "percussion",
+      "beat_index": 13,
+      "bar_number": 3,
+      "volume_scale": 0.38263030814755195,
+      "context": {
+        "beat_in_bar": 1,
+        "section_boundary": false,
+        "tempo": 129.19921875
+      }
+    },
+    {
+      "time": 7.177083085198076,
+      "type": "percussion",
+      "beat_index": 15,
+      "bar_number": 3,
+      "volume_scale": 0.3181943017349673,
+      "context": {
+        "beat_in_bar": 3,
+        "section_boundary": false,
+        "tempo": 129.19921875
+      }
+    },
+    {
+      "time": 18.040721066870535,
+      "type": "fx",
+      "beat_index": 38,
+      "bar_number": 9,
+      "volume_scale": 0.25885665913321365,
+      "context": {
+        "beat_in_bar": 2,
+        "section_boundary": false,
+        "tempo": 129.19921875
+      }
+    },
+    {
+      "time": 19.548967731228654,
+      "type": "texture",
+      "beat_index": 41,
+      "bar_number": 10,
+      "volume_scale": 0.23422736633372332,
+      "context": {
+        "beat_in_bar": 1,
+        "section_boundary": false,
+        "tempo": 129.19921875
+      }
+    }
+  ]
+}

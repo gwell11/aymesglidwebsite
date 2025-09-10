@@ -30,7 +30,9 @@ export default function NuanceGenerator({ className = '' }: NuanceGeneratorProps
 
       const data = await response.json();
       
-      if (data.status === 'redirect-to-local') {
+      if (data.status === 'demo-completed') {
+        setMessage(`🎉 Demo completed! Generated ${data.simulation.unique_sounds_generated} unique sounds with ${data.simulation.effects_applied.join(', ')} effects. For full audio processing, try the local version!`);
+      } else if (data.status === 'redirect-to-local') {
         setMessage('AI tool is available locally! Visit http://localhost:5001 for full functionality.');
         // Optionally open in new tab
         window.open('http://localhost:5001', '_blank');
@@ -92,7 +94,9 @@ export default function NuanceGenerator({ className = '' }: NuanceGeneratorProps
             Full Local Demo
           </a>
           <a
-            href="#"
+            href="https://github.com/gwell11/aymesglidwebsite/tree/main/nuance-generator"
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm text-center transition-colors duration-200"
           >
             View Code

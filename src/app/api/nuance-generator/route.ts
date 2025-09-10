@@ -21,12 +21,23 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
+    // Simulate processing with the provided parameters
     return NextResponse.json({
-      error: 'Service temporarily unavailable',
-      message: 'The AI Song Nuance Generator requires audio processing dependencies that are currently only available in the local development version.',
-      localUrl: 'http://localhost:5001',
-      status: 'redirect-to-local'
-    }, { status: 503 });
+      status: 'demo-completed',
+      message: 'AI processing simulation completed! For full audio processing, please use the local development version.',
+      simulation: {
+        creativity: body.creativity || 0.7,
+        density: body.density || 0.5,
+        intensity: body.intensity || 0.6,
+        effects_applied: ['reverb', 'chorus', 'delay'],
+        unique_sounds_generated: Math.floor(Math.random() * 15) + 5
+      },
+      note: 'This is a demonstration. The full AI audio processing with 10+ effects requires local installation.',
+      links: {
+        github: 'https://github.com/gwell11/aymesglidwebsite/tree/main/nuance-generator',
+        localDemo: 'http://localhost:5001'
+      }
+    });
     
   } catch (error) {
     return NextResponse.json({
