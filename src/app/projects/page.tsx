@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import PCBTraces from '../../components/PCBTraces';
 import NuanceGenerator from '../../components/NuanceGenerator';
+import WebAudioProcessor from '../../components/WebAudioProcessor';
 
 export default function ProjectsPage() {
   return (
@@ -32,6 +33,11 @@ export default function ProjectsPage() {
           <NuanceGenerator />
         </div>
         
+        {/* Web Audio Processor */}
+        <div className="mb-6">
+          <WebAudioProcessor />
+        </div>
+        
         <ul className="space-y-4">
           <li>
             <div className="bg-gradient-to-r from-purple-100 to-pink-100 p-4 rounded-lg border-l-4 border-purple-500">
@@ -40,9 +46,10 @@ export default function ProjectsPage() {
                 <span className="text-lg font-semibold text-purple-800">AI Song Nuance Generator</span>
                 <span className="ml-2 px-2 py-1 bg-green-500 text-white text-xs rounded-full">NEW</span>
               </div>
-              <p className="text-gray-700 mb-3">Advanced AI tool that adds unique, procedurally-generated musical nuances to songs. Features 10+ audio effects (chorus, delay, reverb, etc.) with complete parameter control for infinite sound variety.</p>
+              <p className="text-gray-700 mb-3">Advanced AI tool that adds unique, procedurally-generated musical nuances to songs. Try the instant browser version above, or download the complete tool with 10+ advanced audio effects for professional audio processing.</p>
               <div className="flex flex-wrap gap-2 mb-3">
                 <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs rounded">Python</span>
+                <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs rounded">Web Audio API</span>
                 <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs rounded">AI/ML</span>
                 <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs rounded">Audio Processing</span>
                 <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs rounded">Flask</span>
