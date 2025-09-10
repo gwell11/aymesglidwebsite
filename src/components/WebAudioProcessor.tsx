@@ -18,6 +18,17 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   const [processedAudio, setProcessedAudio] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Audio processing parameters
+  const [parameters, setParameters] = useState({
+    gain: 1.1,
+    filterFreq: 80,
+    reverbDuration: 2,
+    reverbDecay: 2,
+    delayTime: 0.3,
+    delayFeedback: 0.3,
+    dryWetMix: 0.7
+  });
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -47,7 +58,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       
       // Apply audio effects using Web Audio API
-      const processedBuffer = await applyAudioEffects(audioContext, audioBuffer);
+      const processedBuffer = await applyAudioEffects(audioContext, audioBuffer, parameters);
       
       // Convert back to downloadable format
       const wav = audioBufferToWav(processedBuffer);
@@ -65,7 +76,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     }
   };
 
-  const applyAudioEffects = async (audioContext: AudioContext, audioBuffer: AudioBuffer): Promise<AudioBuffer> => {
+  const applyAudioEffects = async (audioContext: AudioContext, audioBuffer: AudioBuffer, params: typeof parameters): Promise<AudioBuffer> => {
     // Create offline context for processing
     const offlineContext = new OfflineAudioContext(
       audioBuffer.numberOfChannels,
@@ -85,17 +96,17 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     const feedbackGain = offlineContext.createGain();
 
     // Configure effects
-    gainNode.gain.value = 1.1; // Slight boost
+    gainNode.gain.value = params.gain;
     biquadFilter.type = 'highpass';
-    biquadFilter.frequency.value = 80;
+    biquadFilter.frequency.value = params.filterFreq;
     
     // Create reverb impulse response
-    const impulseBuffer = createReverbImpulse(offlineContext, 2, 2);
+    const impulseBuffer = createReverbImpulse(offlineContext, params.reverbDuration, params.reverbDecay);
     convolver.buffer = impulseBuffer;
 
     // Configure delay
-    delay.delayTime.value = 0.3;
-    feedbackGain.gain.value = 0.3;
+    delay.delayTime.value = params.delayTime;
+    feedbackGain.gain.value = params.delayFeedback;
 
     // Connect effects chain
     source.connect(gainNode);
@@ -108,7 +119,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
 
     // Also connect dry signal
     const dryGain = offlineContext.createGain();
-    dryGain.gain.value = 0.7;
+    dryGain.gain.value = params.dryWetMix;
     biquadFilter.connect(dryGain);
     dryGain.connect(offlineContext.destination);
 
@@ -204,6 +215,97 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
             onChange={handleFileUpload}
             className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700"
           />
+        </div>
+        
+        {/* Audio Parameters */}
+        <div className="bg-gray-800/50 rounded-lg p-4 space-y-3">
+          <h4 className="text-white font-semibold text-sm mb-3">🎛️ Audio Parameters</h4>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-gray-300 text-xs mb-1">Gain Boost</label>
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={parameters.gain}
+                onChange={(e) => setParameters(prev => ({ ...prev, gain: parseFloat(e.target.value) }))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-gray-400 text-xs">{parameters.gain.toFixed(1)}x</span>
+            </div>
+            
+            <div>
+              <label className="block text-gray-300 text-xs mb-1">Filter (Hz)</label>
+              <input
+                type="range"
+                min="20"
+                max="500"
+                step="10"
+                value={parameters.filterFreq}
+                onChange={(e) => setParameters(prev => ({ ...prev, filterFreq: parseInt(e.target.value) }))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-gray-400 text-xs">{parameters.filterFreq}Hz</span>
+            </div>
+            
+            <div>
+              <label className="block text-gray-300 text-xs mb-1">Reverb Time</label>
+              <input
+                type="range"
+                min="0.5"
+                max="5"
+                step="0.5"
+                value={parameters.reverbDuration}
+                onChange={(e) => setParameters(prev => ({ ...prev, reverbDuration: parseFloat(e.target.value) }))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-gray-400 text-xs">{parameters.reverbDuration.toFixed(1)}s</span>
+            </div>
+            
+            <div>
+              <label className="block text-gray-300 text-xs mb-1">Delay Time</label>
+              <input
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.1"
+                value={parameters.delayTime}
+                onChange={(e) => setParameters(prev => ({ ...prev, delayTime: parseFloat(e.target.value) }))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-gray-400 text-xs">{parameters.delayTime.toFixed(1)}s</span>
+            </div>
+            
+            <div>
+              <label className="block text-gray-300 text-xs mb-1">Delay Feedback</label>
+              <input
+                type="range"
+                min="0"
+                max="0.8"
+                step="0.1"
+                value={parameters.delayFeedback}
+                onChange={(e) => setParameters(prev => ({ ...prev, delayFeedback: parseFloat(e.target.value) }))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-gray-400 text-xs">{parameters.delayFeedback.toFixed(1)}</span>
+            </div>
+            
+            <div>
+              <label className="block text-gray-300 text-xs mb-1">Dry/Wet Mix</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={parameters.dryWetMix}
+                onChange={(e) => setParameters(prev => ({ ...prev, dryWetMix: parseFloat(e.target.value) }))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-gray-400 text-xs">{parameters.dryWetMix.toFixed(1)}</span>
+            </div>
+          </div>
         </div>
         
         <button
