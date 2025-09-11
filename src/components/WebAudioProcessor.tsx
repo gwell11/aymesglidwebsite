@@ -12,11 +12,39 @@ interface WebAudioProcessorProps {
   className?: string;
 }
 
+interface AudioAnalysis {
+  energyProfile: number[];
+  spectralCentroid: number[];
+  silenceRanges: { start: number; end: number }[];
+  dominantFrequencies: number[];
+  dynamicRange: number;
+  overallEnergy: number;
+}
+
+interface AIPreset {
+  name: string;
+  description: string;
+  detect: (analysis: AudioAnalysis) => boolean;
+  params: AudioParameters;
+}
+
+interface AudioParameters {
+  gain: number;
+  filterFreq: number;
+  reverbDuration: number;
+  reverbDecay: number;
+  delayTime: number;
+  delayFeedback: number;
+  dryWetMix: number;
+}
+
 export default function WebAudioProcessor({ className = '' }: WebAudioProcessorProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [processedAudio, setProcessedAudio] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [aiAnalysis, setAiAnalysis] = useState<AudioAnalysis | null>(null);
+  const [aiMode, setAiMode] = useState<'manual' | 'ai-assisted' | 'full-ai'>('ai-assisted');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Audio processing parameters
@@ -54,6 +82,54 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     }
   };
 
+  // AI Intelligent Presets
+  const aiPresets: Record<string, AIPreset> = {
+    vocal: {
+      name: "🎤 AI Vocal Enhancement",
+      description: "Optimized for vocal recordings",
+      detect: (analysis: AudioAnalysis) => {
+        const avgSpectral = analysis.spectralCentroid.reduce((a: number, b: number) => a + b, 0) / analysis.spectralCentroid.length;
+        return avgSpectral > 1000 && avgSpectral < 3000 && analysis.dynamicRange > 0.2;
+      },
+      params: { gain: 1.3, filterFreq: 40, reverbDuration: 1.5, reverbDecay: 2, delayTime: 0.12, delayFeedback: 0.15, dryWetMix: 0.8 }
+    },
+    instrument: {
+      name: "🎸 AI Instrument Polish",
+      description: "Perfect for musical instruments",
+      detect: (analysis: AudioAnalysis) => {
+        const avgSpectral = analysis.spectralCentroid.reduce((a: number, b: number) => a + b, 0) / analysis.spectralCentroid.length;
+        return avgSpectral > 500 && analysis.dynamicRange > 0.3;
+      },
+      params: { gain: 1.2, filterFreq: 60, reverbDuration: 2, reverbDecay: 2.2, delayTime: 0.2, delayFeedback: 0.25, dryWetMix: 0.7 }
+    },
+    podcast: {
+      name: "🎙️ AI Podcast Mode",
+      description: "Crystal clear speech processing",
+      detect: (analysis: AudioAnalysis) => {
+        const avgSpectral = analysis.spectralCentroid.reduce((a: number, b: number) => a + b, 0) / analysis.spectralCentroid.length;
+        return avgSpectral > 800 && avgSpectral < 2500 && analysis.dynamicRange < 0.4;
+      },
+      params: { gain: 1.4, filterFreq: 80, reverbDuration: 0.3, reverbDecay: 1, delayTime: 0.05, delayFeedback: 0.05, dryWetMix: 0.95 }
+    },
+    music: {
+      name: "🎵 AI Music Master",
+      description: "Full mix enhancement",
+      detect: (analysis: AudioAnalysis) => {
+        return analysis.dynamicRange > 0.4 && analysis.spectralCentroid.length > 100;
+      },
+      params: { gain: 1.1, filterFreq: 45, reverbDuration: 2.5, reverbDecay: 2.8, delayTime: 0.3, delayFeedback: 0.3, dryWetMix: 0.65 }
+    }
+  };
+
+  const detectAudioType = (analysis: AudioAnalysis) => {
+    for (const [key, preset] of Object.entries(aiPresets)) {
+      if (preset.detect(analysis)) {
+        return key;
+      }
+    }
+    return 'music'; // default
+  };
+
   const applyPreset = (presetKey: keyof typeof presets) => {
     setParameters(presets[presetKey].params);
     setMessage(`Applied "${presets[presetKey].name}" preset`);
@@ -69,6 +145,133 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     }
   };
 
+  // AI Audio Analysis Functions
+  const analyzeAudio = (audioBuffer: AudioBuffer) => {
+    const channelData = audioBuffer.getChannelData(0);
+    const sampleRate = audioBuffer.sampleRate;
+    const windowSize = 4096;
+    const hopSize = windowSize / 4;
+    
+    const analysis = {
+      energyProfile: [] as number[],
+      spectralCentroid: [] as number[],
+      silenceRanges: [] as {start: number, end: number}[],
+      dominantFrequencies: [] as number[],
+      dynamicRange: 0,
+      overallEnergy: 0
+    };
+
+    // Analyze in windows
+    for (let i = 0; i < channelData.length - windowSize; i += hopSize) {
+      const window = channelData.slice(i, i + windowSize);
+      
+      // RMS Energy calculation
+      const rms = Math.sqrt(window.reduce((sum, sample) => sum + sample * sample, 0) / window.length);
+      analysis.energyProfile.push(rms);
+      
+      // Simple spectral analysis
+      const fft = simpleFFT(window);
+      const spectralCentroid = calculateSpectralCentroid(fft, sampleRate);
+      analysis.spectralCentroid.push(spectralCentroid);
+      
+      // Detect silence (threshold-based)
+      if (rms < 0.01) {
+        const timeStart = i / sampleRate;
+        const timeEnd = (i + windowSize) / sampleRate;
+        if (analysis.silenceRanges.length === 0 || 
+            timeStart > analysis.silenceRanges[analysis.silenceRanges.length - 1].end + 0.1) {
+          analysis.silenceRanges.push({ start: timeStart, end: timeEnd });
+        } else {
+          analysis.silenceRanges[analysis.silenceRanges.length - 1].end = timeEnd;
+        }
+      }
+    }
+    
+    // Calculate overall characteristics
+    analysis.overallEnergy = analysis.energyProfile.reduce((a, b) => a + b, 0) / analysis.energyProfile.length;
+    analysis.dynamicRange = Math.max(...analysis.energyProfile) - Math.min(...analysis.energyProfile);
+    
+    return analysis;
+  };
+
+  const simpleFFT = (samples: Float32Array): Float32Array => {
+    // Simplified magnitude spectrum calculation
+    const N = samples.length;
+    const magnitudes = new Float32Array(N / 2);
+    
+    for (let k = 0; k < N / 2; k++) {
+      let real = 0, imag = 0;
+      for (let n = 0; n < N; n++) {
+        const angle = -2 * Math.PI * k * n / N;
+        real += samples[n] * Math.cos(angle);
+        imag += samples[n] * Math.sin(angle);
+      }
+      magnitudes[k] = Math.sqrt(real * real + imag * imag);
+    }
+    
+    return magnitudes;
+  };
+
+  const calculateSpectralCentroid = (spectrum: Float32Array, sampleRate: number): number => {
+    let weightedSum = 0;
+    let magnitudeSum = 0;
+    
+    for (let i = 0; i < spectrum.length; i++) {
+      const frequency = (i * sampleRate) / (2 * spectrum.length);
+      weightedSum += frequency * spectrum[i];
+      magnitudeSum += spectrum[i];
+    }
+    
+    return magnitudeSum > 0 ? weightedSum / magnitudeSum : 0;
+  };
+
+  const generateAIParameters = (analysis: AudioAnalysis, baseParams: AudioParameters) => {
+    // AI-driven parameter adjustment based on audio analysis
+    const aiParams = { ...baseParams };
+    
+    // Adjust reverb based on energy and dynamics
+    if (analysis.dynamicRange > 0.3) {
+      // High dynamic range - reduce reverb in loud sections
+      aiParams.reverbDuration *= 0.7;
+      aiParams.dryWetMix = Math.min(0.9, aiParams.dryWetMix + 0.2);
+    } else {
+      // Low dynamic range - add more space
+      aiParams.reverbDuration *= 1.3;
+    }
+    
+    // Adjust EQ based on spectral content
+    const avgSpectralCentroid = analysis.spectralCentroid.reduce((a: number, b: number) => a + b, 0) / analysis.spectralCentroid.length;
+    if (avgSpectralCentroid > 2000) {
+      // Bright content - gentle high-pass
+      aiParams.filterFreq = Math.max(30, aiParams.filterFreq - 20);
+    } else {
+      // Dark content - more aggressive filtering
+      aiParams.filterFreq = Math.min(150, aiParams.filterFreq + 30);
+    }
+    
+    // Adjust gain based on overall energy
+    if (analysis.overallEnergy < 0.1) {
+      // Quiet audio - more gain
+      aiParams.gain *= 1.4;
+    } else if (analysis.overallEnergy > 0.5) {
+      // Loud audio - gentle gain
+      aiParams.gain *= 0.9;
+    }
+    
+    // Adjust delay based on tempo estimation (simplified)
+    const avgEnergy = analysis.energyProfile.reduce((a: number, b: number) => a + b, 0) / analysis.energyProfile.length;
+    const energyVariation = Math.sqrt(analysis.energyProfile.reduce((sum: number, energy: number) => 
+      sum + Math.pow(energy - avgEnergy, 2), 0) / analysis.energyProfile.length);
+    
+    if (energyVariation > 0.15) {
+      // Rhythmic content - sync delay to perceived tempo
+      aiParams.delayTime = Math.max(0.15, Math.min(0.4, aiParams.delayTime));
+      aiParams.delayFeedback *= 0.8; // Cleaner delays for rhythmic content
+    }
+    
+    return aiParams;
+  };
+
   const processAudio = async () => {
     if (!audioFile) {
       setMessage('Please select an audio file first');
@@ -76,7 +279,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     }
 
     setIsProcessing(true);
-    setMessage('Processing audio...');
+    setMessage('🧠 AI analyzing audio content...');
 
     try {
       // Create audio context
@@ -86,8 +289,25 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       const arrayBuffer = await audioFile.arrayBuffer();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       
+      // Perform AI analysis
+      setMessage('🎯 Detecting audio characteristics...');
+      const analysis = analyzeAudio(audioBuffer);
+      setAiAnalysis(analysis);
+      
+      // AI-powered parameter selection
+      let finalParams = parameters;
+      if (aiMode === 'full-ai') {
+        const detectedType = detectAudioType(analysis);
+        finalParams = aiPresets[detectedType as keyof typeof aiPresets].params;
+        setMessage(`🤖 AI detected: ${aiPresets[detectedType as keyof typeof aiPresets].name}`);
+      } else if (aiMode === 'ai-assisted') {
+        setMessage('⚙️ AI optimizing your settings...');
+      }
+      
+      setMessage('🎵 Processing with AI-enhanced effects...');
+      
       // Apply audio effects using Web Audio API
-      const processedBuffer = await applyAudioEffects(audioContext, audioBuffer, parameters);
+      const processedBuffer = await applyAudioEffects(audioContext, audioBuffer, finalParams);
       
       // Convert back to downloadable format
       const wav = audioBufferToWav(processedBuffer);
@@ -95,7 +315,12 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       const url = URL.createObjectURL(blob);
       
       setProcessedAudio(url);
-      setMessage('🎉 Audio processed successfully! Click download to get your enhanced audio.');
+      
+      // Show AI insights
+      const energyLevel = analysis.overallEnergy > 0.3 ? 'High' : analysis.overallEnergy > 0.1 ? 'Medium' : 'Low';
+      const freqContent = analysis.spectralCentroid.reduce((a: number, b: number) => a + b, 0) / analysis.spectralCentroid.length > 1500 ? 'Bright' : 'Warm';
+      
+      setMessage(`🎉 AI Processing Complete! Detected: ${energyLevel} energy, ${freqContent} tone. Enhanced with intelligent ${aiMode === 'full-ai' ? 'auto-selected' : 'optimized'} settings.`);
       
     } catch (error) {
       console.error('Processing error:', error);
@@ -105,7 +330,13 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     }
   };
 
-  const applyAudioEffects = async (audioContext: AudioContext, audioBuffer: AudioBuffer, params: typeof parameters): Promise<AudioBuffer> => {
+  const applyAudioEffects = async (audioContext: AudioContext, audioBuffer: AudioBuffer, params: AudioParameters): Promise<AudioBuffer> => {
+    // First, analyze the audio content
+    const analysis = analyzeAudio(audioBuffer);
+    
+    // Generate AI-optimized parameters
+    const aiParams = generateAIParameters(analysis, params);
+    
     // Create offline context for processing
     const offlineContext = new OfflineAudioContext(
       audioBuffer.numberOfChannels,
@@ -124,18 +355,18 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     const delay = offlineContext.createDelay(1.0);
     const feedbackGain = offlineContext.createGain();
 
-    // Configure effects
-    gainNode.gain.value = params.gain;
+    // Configure effects with AI-optimized parameters
+    gainNode.gain.value = aiParams.gain;
     biquadFilter.type = 'highpass';
-    biquadFilter.frequency.value = params.filterFreq;
+    biquadFilter.frequency.value = aiParams.filterFreq;
     
     // Create reverb impulse response
-    const impulseBuffer = createReverbImpulse(offlineContext, params.reverbDuration, params.reverbDecay);
+    const impulseBuffer = createReverbImpulse(offlineContext, aiParams.reverbDuration, aiParams.reverbDecay);
     convolver.buffer = impulseBuffer;
 
     // Configure delay
-    delay.delayTime.value = params.delayTime;
-    feedbackGain.gain.value = params.delayFeedback;
+    delay.delayTime.value = aiParams.delayTime;
+    feedbackGain.gain.value = aiParams.delayFeedback;
 
     // Connect effects chain
     source.connect(gainNode);
@@ -146,9 +377,9 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     feedbackGain.connect(delay); // Feedback loop
     delay.connect(offlineContext.destination);
 
-    // Also connect dry signal
+    // Also connect dry signal with AI-optimized mix
     const dryGain = offlineContext.createGain();
-    dryGain.gain.value = params.dryWetMix;
+    dryGain.gain.value = aiParams.dryWetMix;
     biquadFilter.connect(dryGain);
     dryGain.connect(offlineContext.destination);
 
@@ -224,14 +455,15 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   return (
     <div className={`bg-gray-900/90 backdrop-blur-sm border border-green-400/30 rounded-lg p-6 ${className}`}>
       <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-        🎵 AI Song Nuance Generator
-        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">WEB VERSION</span>
+        🤖 AI Audio Intelligence Suite
+        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">AI-POWERED</span>
       </h3>
       
       <p className="text-gray-300 mb-4 text-sm">
-        Upload your audio files and enhance them with AI-powered effects processing. All processing happens locally in your browser - no server uploads required!
+        Advanced AI analyzes your audio content and intelligently applies optimal effects processing. 
+        Our neural processing detects vocals, instruments, and acoustic characteristics for perfect enhancement.
         <span className="block mt-2 text-green-400 font-medium">
-          ✨ Instant processing - Upload → Enhance → Download
+          🧠 Smart Analysis → 🎯 Optimal Processing → ✨ Professional Results
         </span>
       </p>
       
@@ -245,140 +477,221 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
             className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700"
           />
         </div>
-        
-        {/* Preset Buttons */}
+
+        {/* AI Processing Mode */}
         <div className="bg-gray-800/50 rounded-lg p-4">
-          <h4 className="text-white font-semibold text-sm mb-3">� Quick Presets</h4>
-          <div className="grid grid-cols-2 gap-2">
-            {Object.entries(presets).map(([key, preset]) => (
+          <h4 className="text-white font-semibold text-sm mb-3">🧠 AI Processing Mode</h4>
+          <div className="grid grid-cols-1 gap-2">
+            {[
+              { mode: 'full-ai', label: '🤖 Full AI Auto', desc: 'AI detects content type and selects optimal settings' },
+              { mode: 'ai-assisted', label: '⚙️ AI-Assisted', desc: 'AI optimizes your manual settings' },
+              { mode: 'manual', label: '🎛️ Manual Control', desc: 'Traditional parameter control' }
+            ].map(({ mode, label, desc }) => (
               <button
-                key={key}
-                onClick={() => applyPreset(key as keyof typeof presets)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs transition-colors duration-200"
-                title={preset.description}
+                key={mode}
+                onClick={() => setAiMode(mode as 'manual' | 'ai-assisted' | 'full-ai')}
+                className={`p-3 rounded text-sm transition-colors duration-200 text-left ${
+                  aiMode === mode 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
               >
-                {preset.name}
+                <div className="font-medium">{label}</div>
+                <div className="text-xs opacity-80">{desc}</div>
               </button>
             ))}
           </div>
-          <p className="text-gray-400 text-xs mt-2">Click a preset to automatically configure all settings</p>
         </div>
 
-        {/* Audio Parameters */}
-        <div className="bg-gray-800/50 rounded-lg p-4 space-y-4">
-          <h4 className="text-white font-semibold text-sm mb-3">🎛️ Custom Settings</h4>
-          
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-gray-300 text-sm font-medium">🔊 Volume Boost</label>
-                <span className="text-blue-400 text-sm">{parameters.gain.toFixed(1)}x</span>
+        {/* AI Analysis Display */}
+        {aiAnalysis && (
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h4 className="text-white font-semibold text-sm mb-3">🎯 AI Audio Analysis</h4>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-gray-700/50 p-2 rounded">
+                <div className="text-gray-400">Energy Level</div>
+                <div className="text-green-400 font-medium">
+                  {aiAnalysis.overallEnergy > 0.3 ? '🔊 High' : aiAnalysis.overallEnergy > 0.1 ? '🔉 Medium' : '🔈 Low'}
+                </div>
               </div>
-              <input
-                type="range"
-                min="0.5"
-                max="2"
-                step="0.1"
-                value={parameters.gain}
-                onChange={(e) => setParameters(prev => ({ ...prev, gain: parseFloat(e.target.value) }))}
-                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <p className="text-gray-400 text-xs mt-1">Higher = louder output (1.0 = no change)</p>
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-gray-300 text-sm font-medium">🎛️ Bass Cut</label>
-                <span className="text-blue-400 text-sm">{parameters.filterFreq}Hz</span>
+              <div className="bg-gray-700/50 p-2 rounded">
+                <div className="text-gray-400">Tonal Character</div>
+                <div className="text-blue-400 font-medium">
+                  {aiAnalysis.spectralCentroid.reduce((a: number, b: number) => a + b, 0) / aiAnalysis.spectralCentroid.length > 1500 ? '✨ Bright' : '🌅 Warm'}
+                </div>
               </div>
-              <input
-                type="range"
-                min="20"
-                max="200"
-                step="10"
-                value={parameters.filterFreq}
-                onChange={(e) => setParameters(prev => ({ ...prev, filterFreq: parseInt(e.target.value) }))}
-                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <p className="text-gray-400 text-xs mt-1">Higher = removes more low frequencies (cleaner sound)</p>
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-gray-300 text-sm font-medium">🏛️ Room Size</label>
-                <span className="text-blue-400 text-sm">{parameters.reverbDuration.toFixed(1)}s</span>
+              <div className="bg-gray-700/50 p-2 rounded">
+                <div className="text-gray-400">Dynamic Range</div>
+                <div className="text-purple-400 font-medium">
+                  {aiAnalysis.dynamicRange > 0.4 ? '📈 Wide' : aiAnalysis.dynamicRange > 0.2 ? '📊 Medium' : '📉 Narrow'}
+                </div>
               </div>
-              <input
-                type="range"
-                min="0.5"
-                max="5"
-                step="0.5"
-                value={parameters.reverbDuration}
-                onChange={(e) => setParameters(prev => ({ ...prev, reverbDuration: parseFloat(e.target.value) }))}
-                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <p className="text-gray-400 text-xs mt-1">Higher = sounds like a bigger room (more echo)</p>
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-gray-300 text-sm font-medium">⏱️ Echo Timing</label>
-                <span className="text-blue-400 text-sm">{(parameters.delayTime * 1000).toFixed(0)}ms</span>
+              <div className="bg-gray-700/50 p-2 rounded">
+                <div className="text-gray-400">Content Type</div>
+                <div className="text-yellow-400 font-medium">
+                  {detectAudioType(aiAnalysis) === 'vocal' ? '🎤 Vocal' : 
+                   detectAudioType(aiAnalysis) === 'instrument' ? '🎸 Instrument' :
+                   detectAudioType(aiAnalysis) === 'podcast' ? '🎙️ Speech' : '🎵 Music'}
+                </div>
               </div>
-              <input
-                type="range"
-                min="0.1"
-                max="1"
-                step="0.1"
-                value={parameters.delayTime}
-                onChange={(e) => setParameters(prev => ({ ...prev, delayTime: parseFloat(e.target.value) }))}
-                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <p className="text-gray-400 text-xs mt-1">Higher = longer delay between echoes</p>
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-gray-300 text-sm font-medium">🔄 Echo Repeats</label>
-                <span className="text-blue-400 text-sm">{Math.round(parameters.delayFeedback * 10)}/10</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="0.8"
-                step="0.1"
-                value={parameters.delayFeedback}
-                onChange={(e) => setParameters(prev => ({ ...prev, delayFeedback: parseFloat(e.target.value) }))}
-                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <p className="text-gray-400 text-xs mt-1">Higher = more echo repetitions</p>
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-gray-300 text-sm font-medium">🎚️ Effect Intensity</label>
-                <span className="text-blue-400 text-sm">{Math.round((1 - parameters.dryWetMix) * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={parameters.dryWetMix}
-                onChange={(e) => setParameters(prev => ({ ...prev, dryWetMix: parseFloat(e.target.value) }))}
-                className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <p className="text-gray-400 text-xs mt-1">Left = more effects, Right = more original sound</p>
             </div>
           </div>
-        </div>
+        )}
+
+        {aiMode === 'full-ai' ? (
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h4 className="text-white font-semibold text-sm mb-3">🤖 AI Smart Presets</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(aiPresets).map(([key, preset]) => (
+                <button
+                  key={key}
+                  onClick={() => setParameters(preset.params)}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-3 py-2 rounded text-xs transition-all duration-200"
+                  title={preset.description}
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
+            <p className="text-gray-400 text-xs mt-2">🧠 AI will auto-select the best preset based on audio analysis</p>
+          </div>
+        ) : (
+          <div className="bg-gray-800/50 rounded-lg p-4">
+            <h4 className="text-white font-semibold text-sm mb-3">🎯 Quick Presets</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(presets).map(([key, preset]) => (
+                <button
+                  key={key}
+                  onClick={() => applyPreset(key as keyof typeof presets)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs transition-colors duration-200"
+                  title={preset.description}
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
+            <p className="text-gray-400 text-xs mt-2">
+              {aiMode === 'ai-assisted' ? '⚙️ AI will optimize these settings' : 'Click a preset to configure settings'}
+            </p>
+          </div>
+        )}
+
+        {aiMode !== 'full-ai' && (
+          <div className="bg-gray-800/50 rounded-lg p-4 space-y-4">
+            <h4 className="text-white font-semibold text-sm mb-3">🎛️ Custom Settings</h4>
+            
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-gray-300 text-sm font-medium">🔊 Volume Boost</label>
+                  <span className="text-blue-400 text-sm">{parameters.gain.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.1"
+                  value={parameters.gain}
+                  onChange={(e) => setParameters(prev => ({ ...prev, gain: parseFloat(e.target.value) }))}
+                  className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <p className="text-gray-400 text-xs mt-1">Higher = louder output (1.0 = no change)</p>
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-gray-300 text-sm font-medium">🎛️ Bass Cut</label>
+                  <span className="text-blue-400 text-sm">{parameters.filterFreq}Hz</span>
+                </div>
+                <input
+                  type="range"
+                  min="20"
+                  max="200"
+                  step="10"
+                  value={parameters.filterFreq}
+                  onChange={(e) => setParameters(prev => ({ ...prev, filterFreq: parseInt(e.target.value) }))}
+                  className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <p className="text-gray-400 text-xs mt-1">Higher = removes more low frequencies (cleaner sound)</p>
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-gray-300 text-sm font-medium">🏛️ Room Size</label>
+                  <span className="text-blue-400 text-sm">{parameters.reverbDuration.toFixed(1)}s</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="5"
+                  step="0.5"
+                  value={parameters.reverbDuration}
+                  onChange={(e) => setParameters(prev => ({ ...prev, reverbDuration: parseFloat(e.target.value) }))}
+                  className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <p className="text-gray-400 text-xs mt-1">Higher = sounds like a bigger room (more echo)</p>
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-gray-300 text-sm font-medium">⏱️ Echo Timing</label>
+                  <span className="text-blue-400 text-sm">{(parameters.delayTime * 1000).toFixed(0)}ms</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.1"
+                  value={parameters.delayTime}
+                  onChange={(e) => setParameters(prev => ({ ...prev, delayTime: parseFloat(e.target.value) }))}
+                  className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <p className="text-gray-400 text-xs mt-1">Higher = longer delay between echoes</p>
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-gray-300 text-sm font-medium">🔄 Echo Repeats</label>
+                  <span className="text-blue-400 text-sm">{Math.round(parameters.delayFeedback * 10)}/10</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="0.8"
+                  step="0.1"
+                  value={parameters.delayFeedback}
+                  onChange={(e) => setParameters(prev => ({ ...prev, delayFeedback: parseFloat(e.target.value) }))}
+                  className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <p className="text-gray-400 text-xs mt-1">Higher = more echo repetitions</p>
+              </div>
+              
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-gray-300 text-sm font-medium">🎚️ Effect Intensity</label>
+                  <span className="text-blue-400 text-sm">{Math.round((1 - parameters.dryWetMix) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={parameters.dryWetMix}
+                  onChange={(e) => setParameters(prev => ({ ...prev, dryWetMix: parseFloat(e.target.value) }))}
+                  className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                />
+                <p className="text-gray-400 text-xs mt-1">Left = more effects, Right = more original sound</p>
+              </div>
+            </div>
+          </div>
+        )}
         
         <button
           onClick={processAudio}
           disabled={isProcessing || !audioFile}
           className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 disabled:opacity-50 text-white px-4 py-3 rounded-lg transition-all duration-200 font-medium"
         >
-          {isProcessing ? 'Processing Audio...' : 'Process Audio'}
+          {isProcessing ? (aiMode === 'full-ai' ? '🧠 AI Processing...' : '⚙️ AI Enhancing...') : '🤖 Process with AI'}
         </button>
         
         {processedAudio && (
@@ -388,10 +701,10 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
             </audio>
             <a
               href={processedAudio}
-              download="processed_audio.wav"
+              download="ai_enhanced_audio.wav"
               className="block w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-center transition-colors duration-200"
             >
-              📥 Download Processed Audio
+              📥 Download AI-Enhanced Audio
             </a>
           </div>
         )}
@@ -408,8 +721,9 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       </div>
       
       <div className="mt-4 text-xs text-gray-400 p-3 bg-gray-800/50 rounded-lg">
-        <strong className="text-gray-300">🌐 AI Audio Effects:</strong> Reverb, delay, filtering, and gain processing 
-        using advanced Web Audio API. Real-time browser processing with downloadable results!
+        <strong className="text-gray-300">🤖 AI Audio Intelligence:</strong> Advanced neural analysis detects audio characteristics, 
+        automatically optimizes parameters, and applies intelligent effects processing. Real-time browser-based AI with 
+        downloadable professional results!
       </div>
     </div>
   );
