@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import PCBTraces from '../../components/PCBTraces';
-import WebAudioProcessor from '../../components/WebAudioProcessor';
+import SimpleAudioProcessor from '../../components/SimpleAudioProcessor';
 
 export default function ProjectsPage() {
   return (
@@ -29,7 +29,7 @@ export default function ProjectsPage() {
         
         {/* AI Audio Processor - Single Component */}
         <div className="mb-6">
-          <WebAudioProcessor />
+                      <SimpleAudioProcessor className="w-full" />
         </div>
         
         <ul className="space-y-4">
