@@ -45,6 +45,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   const [message, setMessage] = useState('');
   const [aiAnalysis, setAiAnalysis] = useState<AudioAnalysis | null>(null);
   const [aiMode, setAiMode] = useState<'manual' | 'ai-assisted' | 'full-ai'>('ai-assisted');
+  const [dynamicEffectsIntensity, setDynamicEffectsIntensity] = useState(75); // 75% default intensity
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Audio processing parameters
@@ -343,7 +344,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       }
       
       // Apply audio effects using Web Audio API  
-      const processedBuffer = await applyAudioEffects(audioContext, audioBuffer, aiOptimizedParams);
+      const processedBuffer = await applyAudioEffects(audioContext, audioBuffer, aiOptimizedParams, dynamicEffectsIntensity);
       
       // Convert back to downloadable format
       const wav = audioBufferToWav(processedBuffer);
@@ -366,7 +367,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     }
   };
 
-  const applyAudioEffects = async (audioContext: AudioContext, audioBuffer: AudioBuffer, params: AudioParameters): Promise<AudioBuffer> => {
+  const applyAudioEffects = async (audioContext: AudioContext, audioBuffer: AudioBuffer, params: AudioParameters, dynamicIntensity: number = 75): Promise<AudioBuffer> => {
     // Use the provided parameters directly (analysis already done)
     const aiParams = params;
     
@@ -381,17 +382,19 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     const source = offlineContext.createBufferSource();
     source.buffer = audioBuffer;
 
-    // Create effects chain
+    // Create effects chain with dynamic automation
     const gainNode = offlineContext.createGain();
     const biquadFilter = offlineContext.createBiquadFilter();
     const convolver = offlineContext.createConvolver();
     const delay = offlineContext.createDelay(1.0);
     const feedbackGain = offlineContext.createGain();
+    const dynamicReverbGain = offlineContext.createGain();
+    const dynamicDelayGain = offlineContext.createGain();
+    const dynamicFilterFreq = offlineContext.createGain();
 
-    // Configure effects with AI-optimized parameters
+    // Base configuration
     gainNode.gain.value = aiParams.gain;
-    biquadFilter.type = 'highpass';
-    biquadFilter.frequency.value = aiParams.filterFreq;
+    biquadFilter.type = 'lowpass'; // Changed to lowpass for more dramatic sweeps
     
     // Create reverb impulse response
     const impulseBuffer = createReverbImpulse(offlineContext, aiParams.reverbDuration, aiParams.reverbDecay);
@@ -401,25 +404,242 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     delay.delayTime.value = aiParams.delayTime;
     feedbackGain.gain.value = aiParams.delayFeedback;
 
-    // Connect effects chain
+    // AI-Powered Dynamic Effects Automation
+    const duration = audioBuffer.duration;
+    const sampleRate = audioBuffer.sampleRate;
+    
+    // Detect tempo and create effect moments
+    const estimatedBPM = estimateTempoFromAudio(audioBuffer);
+    const beatDuration = 60 / estimatedBPM; // seconds per beat
+    const barDuration = beatDuration * 4; // 4/4 time signature
+    
+    // Create dynamic effect moments at musically relevant times
+    const effectMoments = generateEffectMoments(duration, barDuration, beatDuration, dynamicIntensity);
+    
+    // Apply dynamic automation
+    applyDynamicAutomation(offlineContext, {
+      filter: biquadFilter,
+      reverbGain: dynamicReverbGain,
+      delayGain: dynamicDelayGain,
+      effectMoments,
+      baseParams: aiParams,
+      duration
+    });
+
+    // Connect the effects chain with dynamic controls
     source.connect(gainNode);
     gainNode.connect(biquadFilter);
-    biquadFilter.connect(convolver);
-    convolver.connect(delay);
-    delay.connect(feedbackGain);
-    feedbackGain.connect(delay); // Feedback loop
-    delay.connect(offlineContext.destination);
-
-    // Also connect dry signal with AI-optimized mix
+    
+    // Split signal for dynamic effects
     const dryGain = offlineContext.createGain();
-    dryGain.gain.value = aiParams.dryWetMix;
+    const wetGain = offlineContext.createGain();
+    
+    // Dry signal (always present)
     biquadFilter.connect(dryGain);
     dryGain.connect(offlineContext.destination);
+    dryGain.gain.value = 0.7; // Base dry level
+    
+    // Wet signal with dynamic reverb
+    biquadFilter.connect(convolver);
+    convolver.connect(dynamicReverbGain);
+    dynamicReverbGain.connect(wetGain);
+    
+    // Wet signal with dynamic delay
+    biquadFilter.connect(delay);
+    delay.connect(feedbackGain);
+    feedbackGain.connect(delay); // Feedback loop
+    delay.connect(dynamicDelayGain);
+    dynamicDelayGain.connect(wetGain);
+    
+    wetGain.connect(offlineContext.destination);
+    wetGain.gain.value = 0.3; // Base wet level
 
     // Start processing
     source.start(0);
     
     return await offlineContext.startRendering();
+  };
+
+  // AI Tempo Estimation
+  const estimateTempoFromAudio = (audioBuffer: AudioBuffer): number => {
+    const channelData = audioBuffer.getChannelData(0);
+    const sampleRate = audioBuffer.sampleRate;
+    const windowSize = 1024;
+    const hopSize = 512;
+    
+    const onsets: number[] = [];
+    let previousEnergy = 0;
+    
+    // Detect onsets (sudden energy increases)
+    for (let i = 0; i < channelData.length - windowSize; i += hopSize) {
+      const window = channelData.slice(i, i + windowSize);
+      const energy = window.reduce((sum, sample) => sum + Math.abs(sample), 0) / window.length;
+      
+      // Onset detection - energy increase above threshold
+      if (energy > previousEnergy * 1.3 && energy > 0.02) {
+        onsets.push(i / sampleRate);
+      }
+      previousEnergy = energy;
+    }
+    
+    // Calculate average interval between onsets
+    if (onsets.length < 4) return 120; // Default BPM
+    
+    const intervals: number[] = [];
+    for (let i = 1; i < onsets.length; i++) {
+      intervals.push(onsets[i] - onsets[i-1]);
+    }
+    
+    // Find most common interval (likely beat duration)
+    intervals.sort((a, b) => a - b);
+    const medianInterval = intervals[Math.floor(intervals.length / 2)];
+    
+    // Convert to BPM, clamp to reasonable range
+    const bpm = Math.max(80, Math.min(180, 60 / medianInterval));
+    return bpm;
+  };
+
+  // Generate Strategic Effect Moments
+  const generateEffectMoments = (duration: number, barDuration: number, beatDuration: number, intensity: number = 75) => {
+    const moments: Array<{time: number, duration: number, type: string, intensity: number}> = [];
+    const numBars = Math.floor(duration / barDuration);
+    const intensityMultiplier = intensity / 100; // Convert percentage to multiplier
+    
+    // Early exit if intensity is too low
+    if (intensity < 10) return moments;
+    
+    for (let bar = 0; bar < numBars; bar++) {
+      const barStart = bar * barDuration;
+      
+      // Add effects at musically interesting moments (frequency based on intensity):
+      
+      // 1. End of every 4th bar (classic breakdown moment)
+      if (bar % Math.max(2, Math.floor(8 - (intensity / 20))) === 3 && Math.random() < intensityMultiplier) {
+        moments.push({
+          time: barStart + barDuration - (beatDuration * 0.5), // Last half beat
+          duration: beatDuration * 0.5,
+          type: 'reverb_sweep',
+          intensity: 0.8 * intensityMultiplier
+        });
+      }
+      
+      // 2. Filter sweeps - more frequent with higher intensity
+      const sweepFrequency = Math.max(4, 16 - Math.floor(intensity / 10));
+      if (bar % sweepFrequency === 0 && bar > 0 && Math.random() < intensityMultiplier) {
+        moments.push({
+          time: barStart,
+          duration: barDuration * Math.min(2, 1 + intensityMultiplier), // Longer sweeps at higher intensity
+          type: 'filter_sweep',
+          intensity: 0.6 * intensityMultiplier
+        });
+      }
+      
+      // 3. Delay throws - probability scales with intensity
+      const delayProbability = 0.15 * intensityMultiplier;
+      if (Math.random() < delayProbability && bar % 2 === 1) {
+        const randomBeat = Math.floor(Math.random() * 4);
+        moments.push({
+          time: barStart + (randomBeat * beatDuration),
+          duration: beatDuration * 0.25, // Quarter beat
+          type: 'delay_throw',
+          intensity: 0.9 * intensityMultiplier
+        });
+      }
+      
+      // 4. Build-up effects before drops - less frequent but more intense
+      if (bar % Math.max(8, 20 - Math.floor(intensity / 10)) === 14 && intensityMultiplier > 0.3) {
+        moments.push({
+          time: barStart,
+          duration: barDuration * 2,
+          type: 'buildup',
+          intensity: 0.7 * intensityMultiplier
+        });
+      }
+      
+      // 5. NEW: Random stutter effects at high intensity
+      if (intensity > 60 && Math.random() < (intensity - 60) / 200) {
+        moments.push({
+          time: barStart + (Math.random() * barDuration),
+          duration: beatDuration * 0.125, // Eighth beat
+          type: 'stutter',
+          intensity: 0.5 * intensityMultiplier
+        });
+      }
+    }
+    
+    return moments.sort((a, b) => a.time - b.time);
+  };
+
+  // Apply Dynamic Automation
+  interface DynamicAutomationNodes {
+    filter: BiquadFilterNode;
+    reverbGain: GainNode;
+    delayGain: GainNode;
+    effectMoments: Array<{time: number, duration: number, type: string, intensity: number}>;
+    baseParams: AudioParameters;
+    duration: number;
+  }
+
+  const applyDynamicAutomation = (context: OfflineAudioContext, nodes: DynamicAutomationNodes) => {
+    const { filter, reverbGain, delayGain, effectMoments, baseParams } = nodes;
+    
+    // Set base values
+    const now = context.currentTime;
+    filter.frequency.setValueAtTime(baseParams.filterFreq, now);
+    reverbGain.gain.setValueAtTime(0.1, now); // Start with minimal reverb
+    delayGain.gain.setValueAtTime(0.05, now); // Start with minimal delay
+    
+    // Apply each effect moment
+    effectMoments.forEach((moment) => {
+      const startTime = moment.time;
+      const endTime = moment.time + moment.duration;
+      
+      switch (moment.type) {
+        case 'reverb_sweep':
+          // Dramatic reverb increase at end of phrases
+          reverbGain.gain.linearRampToValueAtTime(moment.intensity, startTime);
+          reverbGain.gain.linearRampToValueAtTime(0.1, endTime);
+          break;
+          
+        case 'filter_sweep':
+          // Classic filter sweep
+          const startFreq = baseParams.filterFreq;
+          const peakFreq = startFreq * 8; // Sweep up
+          filter.frequency.linearRampToValueAtTime(peakFreq, startTime + moment.duration * 0.5);
+          filter.frequency.linearRampToValueAtTime(startFreq, endTime);
+          break;
+          
+        case 'delay_throw':
+          // Quick delay burst
+          delayGain.gain.linearRampToValueAtTime(moment.intensity, startTime);
+          delayGain.gain.exponentialRampToValueAtTime(0.01, endTime);
+          break;
+          
+        case 'buildup':
+          // Gradual filter close + reverb increase
+          filter.frequency.linearRampToValueAtTime(baseParams.filterFreq * 0.2, endTime);
+          reverbGain.gain.linearRampToValueAtTime(moment.intensity, endTime);
+          // Reset after buildup
+          setTimeout(() => {
+            filter.frequency.linearRampToValueAtTime(baseParams.filterFreq, endTime + 0.1);
+            reverbGain.gain.linearRampToValueAtTime(0.1, endTime + 0.1);
+          }, 0);
+          break;
+          
+        case 'stutter':
+          // Quick gain automation for stutter effect
+          const stutterSteps = 4;
+          const stepDuration = moment.duration / stutterSteps;
+          for (let i = 0; i < stutterSteps; i++) {
+            const stepStart = startTime + (i * stepDuration);
+            const stepEnd = stepStart + (stepDuration * 0.5);
+            // Quick gate effect
+            delayGain.gain.linearRampToValueAtTime(i % 2 === 0 ? moment.intensity : 0, stepStart);
+            delayGain.gain.linearRampToValueAtTime(0, stepEnd);
+          }
+          break;
+      }
+    });
   };
 
   const createReverbImpulse = (audioContext: BaseAudioContext, duration: number, decay: number): AudioBuffer => {
@@ -570,6 +790,51 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
             </div>
           </div>
         )}
+
+        {/* Dynamic Effects Control */}
+        <div className="bg-gray-800/50 rounded-lg p-4">
+          <h4 className="text-white font-semibold text-sm mb-3">🎪 Smart Dynamic Effects</h4>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-400 text-xs">Effect Intensity</span>
+                <span className="text-green-400 text-xs font-mono">{dynamicEffectsIntensity}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={dynamicEffectsIntensity}
+                onChange={(e) => setDynamicEffectsIntensity(Number(e.target.value))}
+                className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #10b981 0%, #10b981 ${dynamicEffectsIntensity}%, #4b5563 ${dynamicEffectsIntensity}%, #4b5563 100%)`
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-gray-700/30 p-2 rounded text-center">
+                <div className="text-gray-400">🎛️ Filter Sweeps</div>
+                <div className="text-blue-300">At build-ups</div>
+              </div>
+              <div className="bg-gray-700/30 p-2 rounded text-center">
+                <div className="text-gray-400">🌊 Reverb Bursts</div>
+                <div className="text-purple-300">End of bars</div>
+              </div>
+              <div className="bg-gray-700/30 p-2 rounded text-center">
+                <div className="text-gray-400">🔄 Delay Throws</div>
+                <div className="text-orange-300">Random beats</div>
+              </div>
+              <div className="bg-gray-700/30 p-2 rounded text-center">
+                <div className="text-gray-400">🚀 Build-ups</div>
+                <div className="text-red-300">Before drops</div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">
+              AI detects tempo and adds effects at musically perfect moments - like a smart DJ!
+            </p>
+          </div>
+        </div>
 
         {aiMode === 'full-ai' ? (
           <div className="bg-gray-800/50 rounded-lg p-4">
