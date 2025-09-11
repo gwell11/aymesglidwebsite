@@ -21,7 +21,7 @@ interface AudioAnalysis {
   overallEnergy: number;
 }
 
-interface AIPreset {
+interface EffectPreset {
   name: string;
   description: string;
   detect: (analysis: AudioAnalysis) => boolean;
@@ -30,7 +30,6 @@ interface AIPreset {
 
 interface AudioParameters {
   gain: number;
-  filterFreq: number;
   reverbDuration: number;
   reverbDecay: number;
   delayTime: number;
@@ -43,18 +42,17 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [processedAudio, setProcessedAudio] = useState<string | null>(null);
   const [message, setMessage] = useState('');
-  const [aiAnalysis, setAiAnalysis] = useState<AudioAnalysis | null>(null);
-  const [aiMode, setAiMode] = useState<'manual' | 'ai-assisted' | 'full-ai'>('ai-assisted');
+  const [analysis, setAnalysis] = useState<AudioAnalysis | null>(null);
+  const [processingMode, setProcessingMode] = useState<'manual' | 'preset-assisted' | 'auto-preset'>('preset-assisted');
   const [dynamicEffectsIntensity, setDynamicEffectsIntensity] = useState(75); // 75% default intensity
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Audio processing parameters
   const [parameters, setParameters] = useState({
     gain: 1.1,
-    filterFreq: 80,
     reverbDuration: 2,
     reverbDecay: 2,
-    delayTime: 0.3,
+    delayTime: 0.2,
     delayFeedback: 0.3,
     dryWetMix: 0.7
   });
@@ -273,11 +271,11 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     // Adjust EQ based on spectral content
     const avgSpectralCentroid = analysis.spectralCentroid.reduce((a: number, b: number) => a + b, 0) / analysis.spectralCentroid.length;
     if (avgSpectralCentroid > 2000) {
-      // Bright content - gentle high-pass
-      aiParams.filterFreq = Math.max(30, aiParams.filterFreq - 20);
+            // Bright content - no filtering needed
+      // (removed all filtering logic)
     } else {
-      // Dark content - more aggressive filtering
-      aiParams.filterFreq = Math.min(150, aiParams.filterFreq + 30);
+      // Dark content - no filtering needed  
+      // (removed all filtering logic)
     }
     
     // Adjust gain based on overall energy
@@ -382,19 +380,16 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     const source = offlineContext.createBufferSource();
     source.buffer = audioBuffer;
 
-    // Create effects chain with dynamic automation
+    // Create effects chain - NO FILTERING AT ALL
     const gainNode = offlineContext.createGain();
-    const biquadFilter = offlineContext.createBiquadFilter();
     const convolver = offlineContext.createConvolver();
     const delay = offlineContext.createDelay(1.0);
     const feedbackGain = offlineContext.createGain();
     const dynamicReverbGain = offlineContext.createGain();
     const dynamicDelayGain = offlineContext.createGain();
-    const dynamicFilterFreq = offlineContext.createGain();
 
-    // Base configuration
+    // Base configuration - NO FILTER
     gainNode.gain.value = aiParams.gain;
-    biquadFilter.type = 'lowpass'; // Changed to lowpass for more dramatic sweeps
     
     // Create reverb impulse response
     const impulseBuffer = createReverbImpulse(offlineContext, aiParams.reverbDuration, aiParams.reverbDecay);
@@ -699,15 +694,15 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   return (
     <div className={`bg-gray-900/90 backdrop-blur-sm border border-green-400/30 rounded-lg p-6 ${className}`}>
       <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-        🤖 AI Audio Intelligence Suite
-        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">AI-POWERED</span>
+        🎵 Audio Effects Processor
+        <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">REVERB + DELAY</span>
       </h3>
       
       <p className="text-gray-300 mb-4 text-sm">
-        Advanced AI analyzes your audio content and intelligently applies optimal effects processing. 
-        Our neural processing detects vocals, instruments, and acoustic characteristics for perfect enhancement.
-        <span className="block mt-2 text-green-400 font-medium">
-          🧠 Smart Analysis → 🎯 Optimal Processing → ✨ Professional Results
+        Simple audio effects processor that adds reverb and delay to your audio files. 
+        Choose from different presets or adjust parameters manually for the sound you want.
+        <span className="block mt-2 text-blue-400 font-medium">
+          🎵 Upload Audio → �️ Choose Settings → ✨ Download Result
         </span>
       </p>
       
