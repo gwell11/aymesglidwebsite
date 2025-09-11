@@ -27,7 +27,7 @@ export default function ProjectsPage() {
       <section className="max-w-3xl w-full bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-8 mb-8 relative z-10">
         <h2 className="text-2xl font-bold mb-2 text-gray-800">Project Samples</h2>
         
-        {/* AI Audio Processor - Single Component */}
+        {/* Audio Effects Processor */}
         <div className="mb-6">
                       <SimpleAudioProcessor className="w-full" />
         </div>
