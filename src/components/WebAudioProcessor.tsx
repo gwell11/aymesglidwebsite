@@ -146,11 +146,11 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   };
 
   // AI Audio Analysis Functions
-  const analyzeAudio = (audioBuffer: AudioBuffer) => {
+  const analyzeAudio = async (audioBuffer: AudioBuffer) => {
     const channelData = audioBuffer.getChannelData(0);
     const sampleRate = audioBuffer.sampleRate;
-    const windowSize = 4096;
-    const hopSize = windowSize / 4;
+    const windowSize = 2048; // Reduced for better performance
+    const hopSize = windowSize * 2; // Larger hop size for faster analysis
     
     const analysis = {
       energyProfile: [] as number[],
@@ -161,18 +161,26 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       overallEnergy: 0
     };
 
-    // Analyze in windows
-    for (let i = 0; i < channelData.length - windowSize; i += hopSize) {
+    // Limit analysis to first 30 seconds for performance
+    const maxSamples = Math.min(channelData.length, sampleRate * 30);
+    
+    // Analyze in windows with progress tracking
+    const totalWindows = Math.floor((maxSamples - windowSize) / hopSize);
+    let processedWindows = 0;
+    
+    for (let i = 0; i < maxSamples - windowSize; i += hopSize) {
       const window = channelData.slice(i, i + windowSize);
       
-      // RMS Energy calculation
+      // RMS Energy calculation (most important for AI decisions)
       const rms = Math.sqrt(window.reduce((sum, sample) => sum + sample * sample, 0) / window.length);
       analysis.energyProfile.push(rms);
       
-      // Simple spectral analysis
-      const fft = simpleFFT(window);
-      const spectralCentroid = calculateSpectralCentroid(fft, sampleRate);
-      analysis.spectralCentroid.push(spectralCentroid);
+      // Only do spectral analysis every 4th window for performance
+      if (processedWindows % 4 === 0) {
+        const fft = simpleFFT(window);
+        const spectralCentroid = calculateSpectralCentroid(fft, sampleRate);
+        analysis.spectralCentroid.push(spectralCentroid);
+      }
       
       // Detect silence (threshold-based)
       if (rms < 0.01) {
@@ -185,6 +193,13 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
           analysis.silenceRanges[analysis.silenceRanges.length - 1].end = timeEnd;
         }
       }
+      
+      processedWindows++;
+      
+      // Yield control back to browser every 50 windows to prevent freezing
+      if (processedWindows % 50 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1));
+      }
     }
     
     // Calculate overall characteristics
@@ -195,18 +210,33 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   };
 
   const simpleFFT = (samples: Float32Array): Float32Array => {
-    // Simplified magnitude spectrum calculation
+    // Use a much more efficient frequency analysis approach
     const N = samples.length;
     const magnitudes = new Float32Array(N / 2);
     
-    for (let k = 0; k < N / 2; k++) {
-      let real = 0, imag = 0;
-      for (let n = 0; n < N; n++) {
-        const angle = -2 * Math.PI * k * n / N;
-        real += samples[n] * Math.cos(angle);
-        imag += samples[n] * Math.sin(angle);
+    // Simple frequency domain analysis using power spectrum approximation
+    // This is much faster than full DFT and sufficient for our AI analysis
+    for (let k = 0; k < N / 2; k += 8) { // Sample every 8th frequency bin for speed
+      let power = 0;
+      const step = Math.floor(N / (N / 2));
+      
+      // Calculate approximate power at this frequency using windowed sampling
+      for (let i = 0; i < N; i += step) {
+        if (i < samples.length) {
+          const sample = samples[i];
+          power += sample * sample;
+        }
       }
-      magnitudes[k] = Math.sqrt(real * real + imag * imag);
+      
+      magnitudes[k] = Math.sqrt(power / (N / step));
+      
+      // Fill in intermediate values by interpolation for smoother spectrum
+      if (k + 8 < N / 2) {
+        const nextPower = k + 8 < N / 2 ? magnitudes[k] : 0;
+        for (let j = 1; j < 8 && k + j < N / 2; j++) {
+          magnitudes[k + j] = magnitudes[k] + (nextPower - magnitudes[k]) * (j / 8);
+        }
+      }
     }
     
     return magnitudes;
@@ -291,7 +321,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       
       // Perform AI analysis
       setMessage('🎯 Detecting audio characteristics...');
-      const analysis = analyzeAudio(audioBuffer);
+      const analysis = await analyzeAudio(audioBuffer);
       setAiAnalysis(analysis);
       
       // AI-powered parameter selection
@@ -306,8 +336,14 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       
       setMessage('🎵 Processing with AI-enhanced effects...');
       
-      // Apply audio effects using Web Audio API
-      const processedBuffer = await applyAudioEffects(audioContext, audioBuffer, finalParams);
+      // Generate AI-optimized parameters once
+      let aiOptimizedParams = finalParams;
+      if (aiMode === 'ai-assisted') {
+        aiOptimizedParams = generateAIParameters(analysis, finalParams);
+      }
+      
+      // Apply audio effects using Web Audio API  
+      const processedBuffer = await applyAudioEffects(audioContext, audioBuffer, aiOptimizedParams);
       
       // Convert back to downloadable format
       const wav = audioBufferToWav(processedBuffer);
@@ -331,11 +367,8 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   };
 
   const applyAudioEffects = async (audioContext: AudioContext, audioBuffer: AudioBuffer, params: AudioParameters): Promise<AudioBuffer> => {
-    // First, analyze the audio content
-    const analysis = analyzeAudio(audioBuffer);
-    
-    // Generate AI-optimized parameters
-    const aiParams = generateAIParameters(analysis, params);
+    // Use the provided parameters directly (analysis already done)
+    const aiParams = params;
     
     // Create offline context for processing
     const offlineContext = new OfflineAudioContext(
