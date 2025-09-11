@@ -416,9 +416,8 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
     // Create dynamic effect moments at musically relevant times
     const effectMoments = generateEffectMoments(duration, barDuration, beatDuration, dynamicIntensity);
     
-    // Apply dynamic automation
+    // Apply dynamic automation (NO FILTERING)
     applyDynamicAutomation(offlineContext, {
-      filter: biquadFilter,
       reverbGain: dynamicReverbGain,
       delayGain: dynamicDelayGain,
       effectMoments,
@@ -426,26 +425,25 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
       duration
     });
 
-    // Connect the effects chain with dynamic controls
+    // Connect effects chain WITHOUT filtering - pure audio path
     source.connect(gainNode);
-    gainNode.connect(biquadFilter);
     
-    // Split signal for dynamic effects
+    // Split signal for dry/wet processing (no filtering!)
     const dryGain = offlineContext.createGain();
     const wetGain = offlineContext.createGain();
     
-    // Dry signal (always present)
-    biquadFilter.connect(dryGain);
+    // Pure dry signal (no filtering)
+    gainNode.connect(dryGain);
     dryGain.connect(offlineContext.destination);
     dryGain.gain.value = 0.7; // Base dry level
     
-    // Wet signal with dynamic reverb
-    biquadFilter.connect(convolver);
+    // Wet signal with ONLY reverb and delay (no filtering)
+    gainNode.connect(convolver);
     convolver.connect(dynamicReverbGain);
     dynamicReverbGain.connect(wetGain);
     
-    // Wet signal with dynamic delay
-    biquadFilter.connect(delay);
+    // Wet signal with ONLY delay (no filtering)
+    gainNode.connect(delay);
     delay.connect(feedbackGain);
     feedbackGain.connect(delay); // Feedback loop
     delay.connect(dynamicDelayGain);
@@ -523,13 +521,13 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
         });
       }
       
-      // 2. Subtle harmonic enhancement instead of harsh filtering
-      if (bar % 8 === 0 && bar > 0 && Math.random() < intensityMultiplier * 0.5) {
+      // 2. Pure delay echoes - no filtering at all
+      if (bar % 6 === 0 && bar > 0 && Math.random() < intensityMultiplier * 0.6) {
         moments.push({
           time: barStart,
-          duration: barDuration * 1.5, // Subtle enhancement
-          type: 'harmonic_enhance',
-          intensity: 0.3 * intensityMultiplier
+          duration: barDuration * 0.5, // Short delay burst
+          type: 'delay_echo',
+          intensity: 0.4 * intensityMultiplier
         });
       }
       
@@ -571,7 +569,6 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
 
   // Apply Dynamic Automation
   interface DynamicAutomationNodes {
-    filter: BiquadFilterNode;
     reverbGain: GainNode;
     delayGain: GainNode;
     effectMoments: Array<{time: number, duration: number, type: string, intensity: number}>;
@@ -580,11 +577,10 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
   }
 
   const applyDynamicAutomation = (context: OfflineAudioContext, nodes: DynamicAutomationNodes) => {
-    const { filter, reverbGain, delayGain, effectMoments, baseParams } = nodes;
+    const { reverbGain, delayGain, effectMoments } = nodes;
     
-    // Set base values
+    // Set base values (NO FILTERING)
     const now = context.currentTime;
-    filter.frequency.setValueAtTime(baseParams.filterFreq, now);
     reverbGain.gain.setValueAtTime(0.1, now); // Start with minimal reverb
     delayGain.gain.setValueAtTime(0.05, now); // Start with minimal delay
     
@@ -600,11 +596,10 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
           reverbGain.gain.linearRampToValueAtTime(0.1, endTime);
           break;
           
-        case 'harmonic_enhance':
-          // Subtle EQ boost instead of harsh sweeping
-          const originalFreq = baseParams.filterFreq;
-          filter.frequency.linearRampToValueAtTime(originalFreq * 1.2, startTime + moment.duration * 0.5);
-          filter.frequency.linearRampToValueAtTime(originalFreq, endTime);
+        case 'delay_echo':
+          // Pure delay effect with no filtering
+          delayGain.gain.linearRampToValueAtTime(moment.intensity, startTime);
+          delayGain.gain.linearRampToValueAtTime(0.05, endTime);
           break;
           
         case 'delay_throw':
@@ -810,8 +805,8 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-gray-700/30 p-2 rounded text-center">
-                <div className="text-gray-400">✨ Harmonic Enhance</div>
-                <div className="text-blue-300">Subtle warmth</div>
+                <div className="text-gray-400">🔄 Delay Echoes</div>
+                <div className="text-blue-300">Pure delay</div>
               </div>
               <div className="bg-gray-700/30 p-2 rounded text-center">
                 <div className="text-gray-400">🌊 Reverb Bursts</div>
@@ -827,7 +822,7 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
               </div>
             </div>
             <p className="text-xs text-gray-500">
-              AI detects tempo and adds gentle, musical effects at perfect moments - no harsh filtering!
+              AI detects tempo and adds ONLY reverb and delay at perfect moments - zero filtering!
             </p>
           </div>
         </div>
