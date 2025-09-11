@@ -523,14 +523,13 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
         });
       }
       
-      // 2. Filter sweeps - more frequent with higher intensity
-      const sweepFrequency = Math.max(4, 16 - Math.floor(intensity / 10));
-      if (bar % sweepFrequency === 0 && bar > 0 && Math.random() < intensityMultiplier) {
+      // 2. Subtle harmonic enhancement instead of harsh filtering
+      if (bar % 8 === 0 && bar > 0 && Math.random() < intensityMultiplier * 0.5) {
         moments.push({
           time: barStart,
-          duration: barDuration * Math.min(2, 1 + intensityMultiplier), // Longer sweeps at higher intensity
-          type: 'filter_sweep',
-          intensity: 0.6 * intensityMultiplier
+          duration: barDuration * 1.5, // Subtle enhancement
+          type: 'harmonic_enhance',
+          intensity: 0.3 * intensityMultiplier
         });
       }
       
@@ -546,13 +545,13 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
         });
       }
       
-      // 4. Build-up effects before drops - less frequent but more intense
+      // 4. Gentle reverb builds instead of harsh filtering
       if (bar % Math.max(8, 20 - Math.floor(intensity / 10)) === 14 && intensityMultiplier > 0.3) {
         moments.push({
           time: barStart,
           duration: barDuration * 2,
-          type: 'buildup',
-          intensity: 0.7 * intensityMultiplier
+          type: 'reverb_build',
+          intensity: 0.6 * intensityMultiplier
         });
       }
       
@@ -601,12 +600,11 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
           reverbGain.gain.linearRampToValueAtTime(0.1, endTime);
           break;
           
-        case 'filter_sweep':
-          // Classic filter sweep
-          const startFreq = baseParams.filterFreq;
-          const peakFreq = startFreq * 8; // Sweep up
-          filter.frequency.linearRampToValueAtTime(peakFreq, startTime + moment.duration * 0.5);
-          filter.frequency.linearRampToValueAtTime(startFreq, endTime);
+        case 'harmonic_enhance':
+          // Subtle EQ boost instead of harsh sweeping
+          const originalFreq = baseParams.filterFreq;
+          filter.frequency.linearRampToValueAtTime(originalFreq * 1.2, startTime + moment.duration * 0.5);
+          filter.frequency.linearRampToValueAtTime(originalFreq, endTime);
           break;
           
         case 'delay_throw':
@@ -615,14 +613,12 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
           delayGain.gain.exponentialRampToValueAtTime(0.01, endTime);
           break;
           
-        case 'buildup':
-          // Gradual filter close + reverb increase
-          filter.frequency.linearRampToValueAtTime(baseParams.filterFreq * 0.2, endTime);
-          reverbGain.gain.linearRampToValueAtTime(moment.intensity, endTime);
-          // Reset after buildup
+        case 'reverb_build':
+          // Gentle reverb increase without harsh filtering
+          reverbGain.gain.linearRampToValueAtTime(moment.intensity * 0.8, endTime);
+          // Gentle return to normal
           setTimeout(() => {
-            filter.frequency.linearRampToValueAtTime(baseParams.filterFreq, endTime + 0.1);
-            reverbGain.gain.linearRampToValueAtTime(0.1, endTime + 0.1);
+            reverbGain.gain.linearRampToValueAtTime(0.1, endTime + 0.5);
           }, 0);
           break;
           
@@ -814,8 +810,8 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-gray-700/30 p-2 rounded text-center">
-                <div className="text-gray-400">🎛️ Filter Sweeps</div>
-                <div className="text-blue-300">At build-ups</div>
+                <div className="text-gray-400">✨ Harmonic Enhance</div>
+                <div className="text-blue-300">Subtle warmth</div>
               </div>
               <div className="bg-gray-700/30 p-2 rounded text-center">
                 <div className="text-gray-400">🌊 Reverb Bursts</div>
@@ -826,12 +822,12 @@ export default function WebAudioProcessor({ className = '' }: WebAudioProcessorP
                 <div className="text-orange-300">Random beats</div>
               </div>
               <div className="bg-gray-700/30 p-2 rounded text-center">
-                <div className="text-gray-400">🚀 Build-ups</div>
-                <div className="text-red-300">Before drops</div>
+                <div className="text-gray-400">🎵 Reverb Builds</div>
+                <div className="text-green-300">Gentle swells</div>
               </div>
             </div>
             <p className="text-xs text-gray-500">
-              AI detects tempo and adds effects at musically perfect moments - like a smart DJ!
+              AI detects tempo and adds gentle, musical effects at perfect moments - no harsh filtering!
             </p>
           </div>
         </div>
