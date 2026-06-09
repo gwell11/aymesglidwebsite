@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aymes Glidewell",
-  description: "The portfolio of Aymes Glidewell — creative technologist, artist, and builder.",
+  title: "Aymes Glidewell · Systems Applications Engineer",
+  description: "Aymes Glidewell — Systems Applications Engineer specializing in building management systems (BMS), DDC controls, BACnet/MSTP and Modbus networking, and embedded systems.",
 };
 
 import Navbar from "@/components/Navbar";
