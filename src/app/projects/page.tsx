@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import PCBTraces from '../../components/PCBTraces';
 import SimpleAudioProcessor from '../../components/SimpleAudioProcessor';
 
@@ -53,7 +52,7 @@ export default function ProjectsPage() {
         <ul className="space-y-4">
           <li>
             <a href="https://github.com/gwell11/handheld-synthesizer" target="_blank" rel="noopener noreferrer" className="text-indigo-700 hover:text-green-600 underline text-lg font-semibold transition">Handheld Synthesizer</a>
-            <p className="text-gray-600 mt-1">A web-based synthesizer demonstrating UI, state management, and sound design. <Link href="/projects/synths/chords-lead" className="text-blue-600 hover:text-green-600 underline transition">View web version</Link></p>
+            <p className="text-gray-600 mt-1">An embedded synthesizer project exploring real-time sound design, UI, and state management — built in C/C++ and JavaScript.</p>
           </li>
         </ul>
       </section>
