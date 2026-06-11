@@ -12,9 +12,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteDescription =
+  "Aymes Glidewell — Systems Applications Engineer specializing in building management systems (BMS), DDC controls, BACnet/MSTP and Modbus networking, and embedded systems.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.aymesglidewell.com"),
   title: "Aymes Glidewell · Systems Applications Engineer",
-  description: "Aymes Glidewell — Systems Applications Engineer specializing in building management systems (BMS), DDC controls, BACnet/MSTP and Modbus networking, and embedded systems.",
+  description: siteDescription,
+  openGraph: {
+    title: "Aymes Glidewell · Systems Applications Engineer",
+    description: siteDescription,
+    url: "https://www.aymesglidewell.com",
+    siteName: "Aymes Glidewell",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Aymes Glidewell · Systems Applications Engineer",
+    description: siteDescription,
+  },
 };
 
 import Navbar from "@/components/Navbar";

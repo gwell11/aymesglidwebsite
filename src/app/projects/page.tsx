@@ -58,9 +58,10 @@ export default function ProjectsPage() {
       </section>
 
       <section className="max-w-3xl w-full bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-8 mb-8 relative z-10">
-        <h2 className="text-2xl font-bold mb-2 text-gray-800">Awards & Certifications</h2>
-        <ul className="list-disc ml-6 text-gray-700">
-          <li>B.S in Electrical Engineering, UCF</li>
+        <h2 className="text-2xl font-bold mb-2 text-gray-800">Certifications & Education</h2>
+        <ul className="list-disc ml-6 text-gray-700 space-y-1">
+          <li><strong>Schneider Electric EcoStruxure Building Operation (EBO)</strong> — Certified</li>
+          <li>B.S. in Electrical Engineering — University of Central Florida</li>
         </ul>
       </section>
 

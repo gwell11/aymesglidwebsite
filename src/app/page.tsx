@@ -13,7 +13,11 @@ export default function Home() {
       <section className="flex flex-col items-center justify-center text-center px-4 mt-20 relative z-10">
         <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-10 max-w-3xl">
           <h1 className="text-5xl font-extrabold mb-2 text-teal-800">Aymes Glidewell</h1>
-          <h2 className="text-2xl font-medium mb-4 text-gray-700">Systems Applications Engineer</h2>
+          <h2 className="text-2xl font-medium mb-3 text-gray-700">Systems Applications Engineer</h2>
+          <div className="inline-flex items-center gap-2 mb-4 text-sm font-semibold text-green-800 bg-green-50 border border-green-200 rounded-full px-4 py-1.5">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Open to BMS &amp; controls engineering roles — NYC metro
+          </div>
           <div className="flex flex-wrap justify-center gap-2 mb-6">
             {["BMS / DDC Controls", "BACnet/MSTP", "Modbus", "Embedded Systems", "PCB Design"].map((tag) => (
               <span key={tag} className="text-sm font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-3 py-1">
